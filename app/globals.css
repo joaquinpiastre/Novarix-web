@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #0a0118;
+  --bg-secondary: #12022a;
+  --violet-dark: #2d0a5e;
+  --violet-mid: #4a1a9e;
+  --purple-main: #7b2ff7;
+  --purple-bright: #a855f7;
+  --accent-magenta: #c026d3;
+  --text-primary: #ffffff;
+  --text-secondary: #a78bca;
+  --border-subtle: rgba(168, 85, 247, 0.2);
+  --error-soft: #f87171;
+  --error-bg: rgba(248, 113, 113, 0.12);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-bg-primary text-text-primary antialiased;
+  background-color: var(--bg-primary);
+}
+
+@layer utilities {
+  .glass {
+    background: rgba(18, 2, 42, 0.55);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  }
+
+  .gradient-text {
+    background: linear-gradient(
+      90deg,
+      var(--purple-bright) 0%,
+      var(--accent-magenta) 50%,
+      var(--purple-main) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  .glow-btn {
+    box-shadow: 0 0 20px rgba(123, 47, 247, 0.45),
+      0 0 48px rgba(168, 85, 247, 0.2);
+    transition: box-shadow 0.25s ease, transform 0.25s ease;
+  }
+
+  .glow-btn:hover {
+    box-shadow: 0 0 28px rgba(123, 47, 247, 0.65),
+      0 0 64px rgba(168, 85, 247, 0.35);
+  }
+
+  .grid-bg {
+    background-image: radial-gradient(
+      circle at center,
+      rgba(168, 85, 247, 0.14) 1px,
+      transparent 1px
+    );
+    background-size: 32px 32px;
+  }
+
+  .focus-ring:focus-visible {
+    outline: 2px solid rgba(123, 47, 247, 0.85);
+    outline-offset: 2px;
+  }
+
+  .focus-ring {
+    outline: none;
+  }
+}
+
+/* Scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--purple-main) var(--bg-secondary);
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(
+    180deg,
+    var(--purple-main),
+    var(--purple-bright)
+  );
+  border-radius: 999px;
+}
+
+::selection {
+  background: rgba(123, 47, 247, 0.45);
+  color: var(--text-primary);
+}
