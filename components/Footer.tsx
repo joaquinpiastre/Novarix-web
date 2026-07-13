@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/BrandLogo";
+import { ADDRESS, WHATSAPP_DISPLAY, WHATSAPP_URL } from "@/lib/constants";
 
 const nav = [
   { href: "/", label: "Inicio" },
@@ -10,9 +11,10 @@ const nav = [
 ];
 
 const social = [
-  { href: "https://linkedin.com/company/novarix", label: "LinkedIn" },
-  { href: "https://www.instagram.com/novarix.agency/", label: "Instagram" },
-  { href: "https://github.com/novarix", label: "GitHub" },
+  { href: "https://linkedin.com/company/novarix", label: "LinkedIn", external: true },
+  { href: "https://novarix.agency/", label: "Instagram", external: false },
+  { href: "https://novarix.agency/", label: "Facebook", external: false },
+  { href: "https://github.com/novarix", label: "GitHub", external: true },
 ];
 
 export function Footer() {
@@ -25,6 +27,15 @@ export function Footer() {
             <p className="mt-4 max-w-md text-text-secondary">
               Tecnología que transforma negocios.
             </p>
+            <p className="mt-4 text-sm text-text-secondary">{ADDRESS}</p>
+            <a
+              href={WHATSAPP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-block text-sm text-text-primary/90 transition-colors hover:text-purple-bright focus-ring rounded"
+            >
+              WhatsApp: {WHATSAPP_DISPLAY}
+            </a>
           </div>
           <div>
             <p className="font-display text-sm font-semibold uppercase tracking-wider text-text-secondary">
@@ -49,11 +60,11 @@ export function Footer() {
             </p>
             <ul className="mt-4 space-y-2">
               {social.map((item) => (
-                <li key={item.href}>
+                <li key={item.label}>
                   <a
                     href={item.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    target={item.external ? "_blank" : undefined}
+                    rel={item.external ? "noopener noreferrer" : undefined}
                     className="text-text-primary/90 transition-colors hover:text-purple-bright focus-ring rounded"
                   >
                     {item.label}

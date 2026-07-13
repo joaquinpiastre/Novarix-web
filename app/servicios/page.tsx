@@ -5,11 +5,11 @@ import { ScrollReveal } from "@/components/ScrollReveal";
 export const metadata: Metadata = {
   title: "Servicios",
   description:
-    "Desarrollo web y software, marketing digital y Ads, consultoría IT y automatización con IA. Servicios diseñados para escalar tu negocio.",
+    "Desarrollo web y software, marketing digital y Ads, consultoría IT y asistente de IA con CRM para WhatsApp. Servicios diseñados para escalar tu negocio.",
   openGraph: {
     title: "Servicios | Novarix Digital Agency",
     description:
-      "Desarrollo, marketing, consultoría IT e IA para empresas que buscan escalar.",
+      "Desarrollo, marketing, consultoría IT y asistente de IA con CRM para empresas que buscan escalar.",
     url: "/servicios",
   },
 };
@@ -24,7 +24,7 @@ const blocks = [
       "Plataformas SaaS",
       "E-commerce",
       "APIs y microservicios",
-      "Sistemas de gestión interno",
+      "Sistemas de gestión: stock, pedidos, reparto y tracking",
     ],
     align: "left" as const,
   },
@@ -55,15 +55,15 @@ const blocks = [
     align: "left" as const,
   },
   {
-    title: "Automatización con IA",
+    title: "Asistente de IA y CRM",
     body:
-      "Implementamos soluciones de inteligencia artificial que transforman procesos manuales en flujos automáticos. Menos tiempo operativo, más tiempo estratégico.",
+      "Un asistente que responde tu WhatsApp automáticamente las 24 horas, toma pedidos, agenda turnos y deriva a tu equipo cuando hace falta, con un CRM que ordena todos tus clientes y conversaciones en un solo lugar.",
     items: [
-      "Automatización de flujos",
-      "Chatbots con IA",
-      "Procesamiento de documentos",
-      "Dashboards inteligentes",
-      "Integraciones",
+      "Respuestas automáticas 24/7",
+      "Toma de pedidos y cotizaciones",
+      "Agenda de turnos y reservas",
+      "CRM con seguimiento de clientes",
+      "Campañas y reportes en tiempo real",
     ],
     align: "right" as const,
   },

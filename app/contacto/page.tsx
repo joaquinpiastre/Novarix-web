@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ContactForm } from "@/components/ContactForm";
 import { ScrollReveal } from "@/components/ScrollReveal";
-import { CONTACT_EMAIL, WHATSAPP_DISPLAY, WHATSAPP_URL } from "@/lib/constants";
+import { ADDRESS, CONTACT_EMAIL, WHATSAPP_DISPLAY, WHATSAPP_URL } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Contacto",
@@ -67,6 +67,12 @@ export default function ContactoPage() {
                   >
                     {WHATSAPP_DISPLAY}
                   </a>
+                </li>
+                <li>
+                  <span className="block text-xs font-semibold uppercase tracking-wider text-text-secondary/80">
+                    Dirección
+                  </span>
+                  <p className="mt-1 text-text-primary">{ADDRESS}</p>
                 </li>
                 <li>
                   <span className="block text-xs font-semibold uppercase tracking-wider text-text-secondary/80">

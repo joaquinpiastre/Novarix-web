@@ -107,7 +107,7 @@ const services = [
   {
     title: "Desarrollo web y software",
     body:
-      "Construimos plataformas digitales, sistemas a medida y experiencias web que convierten visitantes en clientes.",
+      "Construimos plataformas digitales, sistemas a medida y experiencias web que convierten visitantes en clientes, incluyendo sistemas de gestión de stock, pedidos, reparto y tracking de repartidores.",
     icon: IconDev,
   },
   {
@@ -123,10 +123,184 @@ const services = [
     icon: IconConsulting,
   },
   {
-    title: "Automatización con IA",
+    title: "Asistente de IA y CRM",
     body:
-      "Detectamos procesos ineficientes y los automatizamos con inteligencia artificial para liberar el potencial de tu equipo.",
+      "Un asistente que responde tu WhatsApp automáticamente las 24 horas, toma pedidos y agenda turnos, con un CRM que ordena todos tus clientes y conversaciones en un solo lugar.",
     icon: IconAI,
+  },
+];
+
+function IconInstant() {
+  return (
+    <svg viewBox="0 0 32 32" className="h-8 w-8" fill="none" aria-hidden>
+      <path
+        d="M17 4L7 18h7l-1 10 11-16h-7l1-8z"
+        stroke="url(#gInstant)"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <defs>
+        <linearGradient id="gInstant" x1="7" y1="4" x2="24" y2="28" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#a855f7" />
+          <stop offset="1" stopColor="#c026d3" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+function IconOrders() {
+  return (
+    <svg viewBox="0 0 32 32" className="h-8 w-8" fill="none" aria-hidden>
+      <rect x="6" y="4" width="20" height="24" rx="2" stroke="url(#gOrders)" strokeWidth="2" />
+      <path d="M11 11h10M11 16h10M11 21h6" stroke="#a78bca" strokeWidth="1.8" strokeLinecap="round" />
+      <defs>
+        <linearGradient id="gOrders" x1="6" y1="4" x2="26" y2="28" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#7b2ff7" />
+          <stop offset="1" stopColor="#a855f7" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+function IconSchedule() {
+  return (
+    <svg viewBox="0 0 32 32" className="h-8 w-8" fill="none" aria-hidden>
+      <rect x="5" y="7" width="22" height="19" rx="3" stroke="url(#gSchedule)" strokeWidth="2" />
+      <path d="M5 13h22M11 4v6M21 4v6" stroke="#a78bca" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="16" cy="19" r="2.2" fill="#c026d3" />
+      <defs>
+        <linearGradient id="gSchedule" x1="5" y1="7" x2="27" y2="26" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#4a1a9e" />
+          <stop offset="1" stopColor="#a855f7" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+function IconHandoff() {
+  return (
+    <svg viewBox="0 0 32 32" className="h-8 w-8" fill="none" aria-hidden>
+      <circle cx="10" cy="11" r="4" stroke="url(#gHandoff)" strokeWidth="2" />
+      <path d="M4 27c0-5 3-8 6-8s6 3 6 8" stroke="#a78bca" strokeWidth="2" strokeLinecap="round" />
+      <path d="M19 15l4 4-4 4M23 19h-9" stroke="#c026d3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <defs>
+        <linearGradient id="gHandoff" x1="6" y1="7" x2="14" y2="15" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#7b2ff7" />
+          <stop offset="1" stopColor="#a855f7" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+function IconCRM() {
+  return (
+    <svg viewBox="0 0 32 32" className="h-8 w-8" fill="none" aria-hidden>
+      <rect x="4" y="6" width="24" height="20" rx="2" stroke="url(#gCRM)" strokeWidth="2" />
+      <circle cx="11" cy="14" r="2.5" stroke="#a78bca" strokeWidth="1.8" />
+      <path d="M7 22c0-2.5 1.8-4 4-4s4 1.5 4 4M19 12h6M19 17h6M19 22h4" stroke="#a78bca" strokeWidth="1.8" strokeLinecap="round" />
+      <defs>
+        <linearGradient id="gCRM" x1="4" y1="6" x2="28" y2="26" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#7b2ff7" />
+          <stop offset="1" stopColor="#c026d3" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+function IconFollowUp() {
+  return (
+    <svg viewBox="0 0 32 32" className="h-8 w-8" fill="none" aria-hidden>
+      <path
+        d="M16 6a10 10 0 100 20 10 10 0 000-20z"
+        stroke="url(#gFollowUp)"
+        strokeWidth="2"
+      />
+      <path d="M16 11v6l4 3" stroke="#a78bca" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <defs>
+        <linearGradient id="gFollowUp" x1="6" y1="6" x2="26" y2="26" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#4a1a9e" />
+          <stop offset="1" stopColor="#a855f7" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+function IconCampaign() {
+  return (
+    <svg viewBox="0 0 32 32" className="h-8 w-8" fill="none" aria-hidden>
+      <path d="M5 13v6h5l8 5V8l-8 5H5z" stroke="url(#gCampaign)" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M23 12a6 6 0 010 8" stroke="#a78bca" strokeWidth="2" strokeLinecap="round" />
+      <defs>
+        <linearGradient id="gCampaign" x1="5" y1="8" x2="23" y2="24" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#7b2ff7" />
+          <stop offset="1" stopColor="#c026d3" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+function IconReports() {
+  return (
+    <svg viewBox="0 0 32 32" className="h-8 w-8" fill="none" aria-hidden>
+      <path d="M6 26V13M14 26V6M22 26v-9M26 26H6" stroke="url(#gReports)" strokeWidth="2.2" strokeLinecap="round" />
+      <defs>
+        <linearGradient id="gReports" x1="6" y1="6" x2="26" y2="26" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#a855f7" />
+          <stop offset="1" stopColor="#c026d3" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+const aiFeatures = [
+  {
+    title: "Responde al instante, 24/7",
+    body: "Contesta las consultas frecuentes con el tono de tu marca, sin demoras ni ausencias.",
+    icon: IconInstant,
+  },
+  {
+    title: "Toma pedidos y cotiza",
+    body: "Arma el pedido o presupuesto y lo deja listo para tu equipo.",
+    icon: IconOrders,
+  },
+  {
+    title: "Agenda turnos y reservas",
+    body: "Coordina citas, reservas y entregas sin cruces de horario.",
+    icon: IconSchedule,
+  },
+  {
+    title: "Deriva a una persona cuando hace falta",
+    body: "Cuando la conversación lo requiere, pasa el chat a tu equipo sin fricción.",
+    icon: IconHandoff,
+  },
+  {
+    title: "CRM integrado",
+    body: "Todos los contactos, conversaciones y clientes ordenados en un solo panel. Sabés con quién hablaste, qué te preguntaron y en qué estado está cada oportunidad.",
+    icon: IconCRM,
+  },
+  {
+    title: "Seguimiento automático de clientes",
+    body: "Mensajes de seguimiento y recordatorios automáticos para que ningún cliente quede sin respuesta.",
+    icon: IconFollowUp,
+  },
+  {
+    title: "Campañas y mensajes masivos",
+    body: "Enviá promociones y novedades a tu base de clientes de forma segmentada.",
+    icon: IconCampaign,
+  },
+  {
+    title: "Reportes y métricas",
+    body: "Cuántos mensajes entran, cuántos se responden solos y cuánto se vende, en tiempo real.",
+    icon: IconReports,
   },
 ];
 
@@ -199,7 +373,7 @@ const testimonials = [
     name: "NYR Funeraria",
     role: "Catriel · Río Negro",
     quote:
-      "La automatización de mensajes nos quitó carga en momentos donde cada minuto cuenta, y las redes quedaron con una línea respetuosa y constante. Se nota que conocen el tipo de servicio que damos.",
+      "El asistente de IA nos responde el WhatsApp de forma inmediata en momentos donde cada minuto cuenta, y el CRM nos dejó todos los contactos y conversaciones ordenados en un solo lugar. Se nota que conocen el tipo de servicio que damos.",
   },
   {
     initials: "TR",
@@ -244,6 +418,52 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="relative overflow-hidden border-y border-border-subtle bg-bg-secondary/30 px-4 py-20 sm:px-6 lg:px-8">
+        <div
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_50%_0%,rgba(123,47,247,0.25),transparent_65%)]"
+          aria-hidden
+        />
+        <div className="relative mx-auto max-w-7xl">
+          <ScrollReveal>
+            <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
+              Un asistente que responde tu <span className="gradient-text">WhatsApp</span> las 24 horas
+            </h2>
+            <p className="mt-4 max-w-2xl text-lg text-text-secondary">
+              Cada mensaje sin responder es un cliente que se pierde. El asistente de
+              Novarix atiende, responde consultas, toma pedidos y agenda turnos solo,
+              de día y de noche, incluso fines de semana.
+            </p>
+          </ScrollReveal>
+          <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {aiFeatures.map((f, i) => (
+              <ScrollReveal key={f.title} delay={i * 0.06}>
+                <article className="glass group relative flex h-full flex-col rounded-2xl p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-glow-sm">
+                  <div className="mb-4 inline-flex w-fit rounded-xl border border-border-subtle bg-bg-secondary/40 p-2.5 transition-colors group-hover:border-purple-bright/30">
+                    <f.icon />
+                  </div>
+                  <h3 className="font-display text-base font-semibold text-text-primary">
+                    {f.title}
+                  </h3>
+                  <p className="mt-2 flex-1 text-sm leading-relaxed text-text-secondary">
+                    {f.body}
+                  </p>
+                </article>
+              </ScrollReveal>
+            ))}
+          </div>
+          <ScrollReveal delay={0.2}>
+            <div className="mt-14 text-center">
+              <Link
+                href="/contacto"
+                className="glow-btn inline-flex items-center justify-center rounded-full bg-white px-10 py-4 text-base font-semibold text-violet-dark transition-transform hover:scale-[1.03] focus-ring"
+              >
+                Quiero verlo funcionando
+              </Link>
+            </div>
+          </ScrollReveal>
+        </div>
+      </section>
+
       <section className="border-y border-border-subtle bg-bg-secondary/30 px-4 py-20 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <ScrollReveal>
@@ -277,13 +497,13 @@ export default function HomePage() {
           <div className="mt-14 grid grid-cols-2 gap-8 lg:grid-cols-4">
             <ScrollReveal className="text-center" delay={0}>
               <p className="font-display text-4xl font-bold text-text-primary sm:text-5xl">
-                <AnimatedCounter value={4} prefix="+" suffix=" años" />
+                <AnimatedCounter value={3} prefix="+" suffix=" años" />
               </p>
               <p className="mt-2 text-sm text-text-secondary">Experiencia en el sector</p>
             </ScrollReveal>
             <ScrollReveal className="text-center" delay={0.08}>
               <p className="font-display text-4xl font-bold text-text-primary sm:text-5xl">
-                <AnimatedCounter value={50} prefix="+" suffix=" proyectos" />
+                <AnimatedCounter value={15} prefix="+" suffix=" proyectos" />
               </p>
               <p className="mt-2 text-sm text-text-secondary">Entregados</p>
             </ScrollReveal>
@@ -295,10 +515,10 @@ export default function HomePage() {
             </ScrollReveal>
             <ScrollReveal className="text-center" delay={0.24}>
               <p className="font-display text-4xl font-bold text-text-primary sm:text-5xl">
-                <AnimatedCounter value={8} prefix="+" suffix=" rubros" />
+                <AnimatedCounter value={6} prefix="+" suffix=" rubros" />
               </p>
               <p className="mt-2 text-sm text-text-secondary">
-                Comercio, salud, servicios locales y más
+                Comercio, salud, servicios locales, transporte, gastronomía y más
               </p>
             </ScrollReveal>
           </div>
