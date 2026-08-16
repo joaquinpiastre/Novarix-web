@@ -16,6 +16,10 @@ export interface DashboardStats {
   net_current_month: number;
   pending_recurring_count: number;
   pending_recurring_amount: number;
+  current_month_recurring_income: number;
+  current_month_oneoff_income: number;
+  pending_oneoff_count: number;
+  pending_oneoff_amount: number;
 }
 
 export interface MonthlyIncomePoint {
@@ -27,6 +31,13 @@ export interface PendingAgreement {
   id: string;
   amount: number;
   billing_day: number;
+  concept: string;
+  client_name: string;
+}
+
+export interface PendingOneOff {
+  id: string;
+  amount: number;
   concept: string;
   client_name: string;
 }
@@ -46,10 +57,12 @@ export function AdminDashboard({
   stats,
   series,
   pending,
+  pendingOneOff,
 }: {
   stats: DashboardStats;
   series: MonthlyIncomePoint[];
   pending: PendingAgreement[];
+  pendingOneOff: PendingOneOff[];
 }) {
   const incomeDelta = stats.current_month_income - stats.previous_month_income;
 
@@ -76,6 +89,16 @@ export function AdminDashboard({
           label="Promedio mensual (12m)"
           value={formatCurrency(stats.avg_monthly_income_12mo)}
         />
+        <StatTile
+          label="Recurrente este mes"
+          value={formatCurrency(stats.current_month_recurring_income)}
+          hint="Cobros de acuerdos recurrentes"
+        />
+        <StatTile
+          label="Puntual este mes"
+          value={formatCurrency(stats.current_month_oneoff_income)}
+          hint="Proyectos y pagos únicos"
+        />
         <StatTile label="Gastos este mes" value={formatCurrency(stats.current_month_expenses)} />
         <StatTile
           label="Neto este mes"
@@ -83,10 +106,16 @@ export function AdminDashboard({
           tone={stats.net_current_month >= 0 ? "success" : "danger"}
         />
         <StatTile
-          label="Pendiente de cobro"
+          label="Pendiente recurrente"
           value={formatCurrency(stats.pending_recurring_amount)}
           hint={`${stats.pending_recurring_count} cliente${stats.pending_recurring_count === 1 ? "" : "s"}`}
           tone={stats.pending_recurring_count > 0 ? "danger" : "default"}
+        />
+        <StatTile
+          label="Pendiente puntual"
+          value={formatCurrency(stats.pending_oneoff_amount)}
+          hint={`${stats.pending_oneoff_count} pago${stats.pending_oneoff_count === 1 ? "" : "s"}`}
+          tone={stats.pending_oneoff_count > 0 ? "danger" : "default"}
         />
       </div>
 
@@ -120,7 +149,7 @@ export function AdminDashboard({
       </Card>
 
       <Card>
-        <CardTitle>Pendientes de cobro este mes</CardTitle>
+        <CardTitle>Recurrentes pendientes de cobro este mes</CardTitle>
         {pending.length === 0 ? (
           <p className="mt-3 text-sm text-text-muted">No hay cobros recurrentes pendientes.</p>
         ) : (
@@ -132,6 +161,30 @@ export function AdminDashboard({
                   <p className="text-xs text-text-muted">
                     {p.concept} · vence el día {p.billing_day}
                   </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-text-primary">
+                    {formatCurrency(p.amount)}
+                  </span>
+                  <Badge tone="warning">Pendiente</Badge>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      <Card>
+        <CardTitle>Pagos puntuales pendientes de cobro</CardTitle>
+        {pendingOneOff.length === 0 ? (
+          <p className="mt-3 text-sm text-text-muted">No hay pagos puntuales pendientes.</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-border">
+            {pendingOneOff.map((p) => (
+              <li key={p.id} className="flex items-center justify-between gap-3 py-3">
+                <div>
+                  <p className="text-sm font-medium text-text-primary">{p.client_name}</p>
+                  <p className="text-xs text-text-muted">{p.concept}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-text-primary">

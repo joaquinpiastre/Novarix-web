@@ -11,14 +11,14 @@ export default async function PaymentsOutPage() {
   const [payments, collaborators] = await Promise.all([
     isAdmin
       ? query<PaymentOutRow>(
-          `select po.id, po.amount, po.concept, po.period_month, po.paid_on,
+          `select po.id, po.amount, po.concept, po.payment_type, po.period_month, po.paid_on,
                   json_build_object('full_name', p.full_name) as recipient
            from payments_out po
            join profiles p on p.id = po.recipient_id
            order by po.paid_on desc`
         )
       : query<PaymentOutRow>(
-          `select po.id, po.amount, po.concept, po.period_month, po.paid_on,
+          `select po.id, po.amount, po.concept, po.payment_type, po.period_month, po.paid_on,
                   json_build_object('full_name', p.full_name) as recipient
            from payments_out po
            join profiles p on p.id = po.recipient_id

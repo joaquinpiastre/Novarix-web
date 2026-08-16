@@ -5,17 +5,24 @@ import { useFormState, useFormStatus } from "react-dom";
 import { Plus, Trash2 } from "lucide-react";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate, formatMonthLabel, todayISO } from "@/lib/utils/dates";
-import { ROLE_LABELS, type UserRole } from "@/lib/types/domain";
+import {
+  PAYMENT_OUT_TYPE_LABELS,
+  ROLE_LABELS,
+  type PaymentOutType,
+  type UserRole,
+} from "@/lib/types/domain";
 import { createPaymentOut, deletePaymentOut, type ActionState } from "./actions";
 
 export interface PaymentOutRow {
   id: string;
   amount: number;
   concept: string;
+  payment_type: PaymentOutType;
   period_month: string;
   paid_on: string;
   recipient: { full_name: string } | null;
@@ -54,10 +61,15 @@ function NewPaymentForm({ collaborators }: { collaborators: Collaborator[] }) {
           ))}
         </Select>
         <Input label="Monto" name="amount" type="number" min={0} step="0.01" required />
+        <Select label="Tipo de pago" name="payment_type" required defaultValue="salary">
+          <option value="salary">Sueldo</option>
+          <option value="bonus">Bono</option>
+          <option value="other">Otro</option>
+        </Select>
         <Input label="Mes que corresponde" name="period_month" type="month" required />
         <Input label="Fecha de pago" name="paid_on" type="date" defaultValue={todayISO()} required />
         <div className="sm:col-span-2">
-          <Input label="Concepto" name="concept" placeholder="Ej: sueldo agosto, proyecto X" required />
+          <Input label="Concepto" name="concept" placeholder="Ej: sueldo agosto, bono de fin de año" required />
         </div>
         {state.error && <p className="text-sm text-danger sm:col-span-2">{state.error}</p>}
         <div className="sm:col-span-2">
@@ -119,6 +131,11 @@ export function PaymentsOutClient({
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
+                  {p.payment_type !== "salary" && (
+                    <Badge tone={p.payment_type === "bonus" ? "success" : "neutral"}>
+                      {PAYMENT_OUT_TYPE_LABELS[p.payment_type]}
+                    </Badge>
+                  )}
                   <span className="text-sm font-semibold text-text-primary">
                     {formatCurrency(p.amount)}
                   </span>

@@ -1,5 +1,6 @@
 export type UserRole = "admin" | "programmer" | "marketing";
 export type TaskStatus = "pending" | "in_progress" | "done";
+export type PaymentOutType = "salary" | "bonus" | "other";
 
 export interface Profile {
   id: string;
@@ -43,6 +44,7 @@ export interface PaymentOut {
   recipient_id: string;
   amount: number;
   concept: string;
+  payment_type: PaymentOutType;
   period_month: string;
   paid_on: string;
   created_by: string;
@@ -83,3 +85,9 @@ export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
 };
 
 export const TASK_STATUS_ORDER: TaskStatus[] = ["pending", "in_progress", "done"];
+
+export const PAYMENT_OUT_TYPE_LABELS: Record<PaymentOutType, string> = {
+  salary: "Sueldo",
+  bonus: "Bono",
+  other: "Otro",
+};

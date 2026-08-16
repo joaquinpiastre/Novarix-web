@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import clsx from "clsx";
 import { LogOut } from "lucide-react";
 import { navLinksForRole } from "./links";
+import { LogoMark, LogoWordmark } from "@/components/Logo";
 import type { Profile } from "@/lib/types/domain";
 import { ROLE_LABELS } from "@/lib/types/domain";
 
@@ -14,9 +15,14 @@ export function Sidebar({ profile, signOut }: { profile: Profile; signOut: () =>
 
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-surface md:flex">
-      <div className="border-b border-border p-5">
-        <p className="text-sm font-semibold text-text-primary">Novarix</p>
-        <p className="text-xs text-text-muted">Panel interno</p>
+      <div className="flex items-center gap-3 border-b border-border p-5">
+        <LogoMark size={30} />
+        <div>
+          <p className="text-sm font-semibold">
+            <LogoWordmark />
+          </p>
+          <p className="text-xs text-text-muted">Panel interno</p>
+        </div>
       </div>
       <nav className="flex-1 space-y-1 p-3">
         {links.map((link) => {

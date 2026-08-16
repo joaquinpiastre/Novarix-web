@@ -1,7 +1,13 @@
 import { getSessionProfile } from "@/lib/auth/getSessionProfile";
 import { query, queryOne } from "@/lib/db";
 import { currentPeriodMonth, previousPeriodMonth } from "@/lib/utils/dates";
-import { AdminDashboard, type DashboardStats, type MonthlyIncomePoint, type PendingAgreement } from "./AdminDashboard";
+import {
+  AdminDashboard,
+  type DashboardStats,
+  type MonthlyIncomePoint,
+  type PendingAgreement,
+  type PendingOneOff,
+} from "./AdminDashboard";
 import { CollaboratorDashboard } from "./CollaboratorDashboard";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +16,7 @@ export default async function DashboardPage() {
   const { userId, profile } = await getSessionProfile();
 
   if (profile.role === "admin") {
-    const [stats, series, agreements, paidThisMonth] = await Promise.all([
+    const [stats, series, agreements, paidThisMonth, pendingOneOff] = await Promise.all([
       queryOne<DashboardStats>("select * from dashboard_stats()"),
       query<MonthlyIncomePoint>("select * from monthly_income_series($1)", [6]),
       query<{ id: string; amount: number; billing_day: number; concept: string; client_name: string }>(
@@ -22,6 +28,13 @@ export default async function DashboardPage() {
       query<{ recurring_agreement_id: string }>(
         "select recurring_agreement_id from payments_in where period_month = $1 and recurring_agreement_id is not null",
         [currentPeriodMonth()]
+      ),
+      query<PendingOneOff>(
+        `select pi.id, pi.amount, pi.concept, c.name as client_name
+         from payments_in pi
+         join clients c on c.id = pi.client_id
+         where pi.date_received is null and pi.recurring_agreement_id is null
+         order by pi.created_at`
       ),
     ]);
 
@@ -40,10 +53,15 @@ export default async function DashboardPage() {
             net_current_month: 0,
             pending_recurring_count: 0,
             pending_recurring_amount: 0,
+            current_month_recurring_income: 0,
+            current_month_oneoff_income: 0,
+            pending_oneoff_count: 0,
+            pending_oneoff_amount: 0,
           }
         }
         series={series}
         pending={pending}
+        pendingOneOff={pendingOneOff}
       />
     );
   }
