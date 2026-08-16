@@ -41,14 +41,18 @@ npm run dev
 
 Se levanta en [http://localhost:3001](http://localhost:3001) (puerto distinto al del sitio principal, que corre en el 3000, así podés tener ambos abiertos a la vez).
 
-## 5. Desplegarlo en Railway
+## 5. Deploy en Railway (ya configurado)
 
 Este proyecto **no** es parte del sitio estático de `novarix.agency` (ese sigue en Hostinger) — necesita un hosting que corra un servidor Next.js de verdad (no hosting estático).
 
-1. En [railway.app](https://railway.app), en el **mismo proyecto** donde creaste la base de datos (paso 1), agregá un servicio nuevo → **Deploy from GitHub repo**, eligiendo este repositorio.
-2. En la configuración del servicio (**Settings → Source**), poné `panel` como **Root Directory** — es clave, porque el repo tiene el sitio de marketing en la raíz y el panel adentro de esa carpeta. Railway detecta automáticamente que es un proyecto Next.js (Nixpacks) y corre `npm install`, `npm run build` y `npm run start`.
-3. En **Variables** del servicio del panel, agregá `DATABASE_URL` usando una **reference variable** a la base: `${{Postgres.DATABASE_URL}}` (así usa la conexión privada e interna, más rápida, sin salir a internet — Railway resuelve automáticamente el nombre del servicio de Postgres).
-4. Deploy. Railway te da una URL propia (ej. `panel-novarix.up.railway.app`), o le podés poner un dominio propio tipo `panel.novarix.agency` desde **Settings → Networking → Custom Domain**.
+El servicio `panel` en Railway ya está conectado al repositorio de GitHub (`joaquinpiastre/Novarix-web`, rama `main`), con:
+- **Root Directory**: `panel` — clave, porque el repo tiene el sitio de marketing en la raíz.
+- **Watch paths**: `panel/**` — así un push que solo toca el sitio (fuera de `panel/`) no dispara un rebuild innecesario del panel.
+- `DATABASE_URL` cargada como **reference variable** a la base: `${{Postgres.DATABASE_URL}}` (conexión privada e interna).
+
+**Esto significa que a partir de ahora, cualquier `git push` a `main` que toque algo dentro de `panel/` redespliega solo.** Ya no hace falta correr `railway up` a mano.
+
+Lo único que **no** se automatiza son los cambios de esquema: si agregás una migración nueva en `db/migrations/`, hay que correrla a mano contra la base de producción (con `railway connect postgres` o el botón Query del dashboard) — el deploy automático no ejecuta SQL por vos.
 
 ## Estructura
 
