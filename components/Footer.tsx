@@ -75,7 +75,7 @@ export function Footer() {
           </div>
         </div>
         <div className="mt-14 flex flex-col gap-3 border-t border-border-subtle pt-8 text-sm text-text-secondary sm:flex-row sm:items-center sm:justify-between">
-          <p>© 2025 Novarix Digital Agency. Todos los derechos reservados.</p>
+          <p>© {new Date().getFullYear()} Novarix Digital Agency. Todos los derechos reservados.</p>
           <p className="text-text-secondary/80">
             Hecho con precisión en Argentina 🇦🇷
           </p>

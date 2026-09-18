@@ -41,17 +41,6 @@ const cases = [
     tags: ["Web", "App", "Salud"],
   },
   {
-    title: "NYR Funeraria — Catriel",
-    type: "Automatización + Redes sociales",
-    challenge:
-      "Servicio sensible en Catriel: coordinar comunicación con familias y presencia en redes sin sobrecargar al equipo.",
-    solution:
-      "Software de automatización de mensajes para agilizar contactos y seguimiento, más gestión de redes sociales de la funeraria.",
-    result:
-      "Comunicación más ordenada y presencia digital coherente con la seriedad del servicio.",
-    tags: ["Automatización", "Social media", "Local"],
-  },
-  {
     title: "Tirua — administración y pagos",
     type: "Plataforma de gestión",
     challenge:

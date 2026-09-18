@@ -369,13 +369,6 @@ const testimonials = [
       "La web institucional y la app para socios nos permitieron ordenar información y trámites en un solo ecosistema multiplataforma. La implementación fue pensada para usuarios reales, no solo para el escritorio.",
   },
   {
-    initials: "NY",
-    name: "NYR Funeraria",
-    role: "Catriel · Río Negro",
-    quote:
-      "El asistente de IA nos responde el WhatsApp de forma inmediata en momentos donde cada minuto cuenta, y el CRM nos dejó todos los contactos y conversaciones ordenados en un solo lugar. Se nota que conocen el tipo de servicio que damos.",
-  },
-  {
     initials: "TR",
     name: "Equipo Tirua",
     role: "Plataforma de gestión",
