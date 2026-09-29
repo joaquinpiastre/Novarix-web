@@ -1,4 +1,4 @@
-name: Deploy site to Hostinger
+name: Build and publish deploy branch
 
 on:
   push:
@@ -29,11 +29,9 @@ jobs:
       - name: Build static export
         run: npm run build
 
-      # Publica el sitio compilado (out/) en la rama `deploy`. Esta rama
-      # es la que hay que conectar en hPanel (Avanzado > Git > Connect
-      # with GitHub) para que Hostinger despliegue solo en cada push,
-      # sin FTP. Va antes que el paso de FTP para que se cumpla aunque
-      # el FTP siga fallando.
+      # Publica el sitio compilado (out/) en la rama `deploy`. Esa rama
+      # es la que está conectada en hPanel (Avanzado > Git) para que
+      # Hostinger despliegue solo en cada push.
       - name: Publish build to deploy branch
         uses: peaceiris/actions-gh-pages@v3
         with:
@@ -41,19 +39,3 @@ jobs:
           publish_dir: ./out
           publish_branch: deploy
           force_orphan: true
-
-      # TEMPORAL: se mantiene mientras se valida el deploy automático de
-      # Hostinger vía la rama `deploy` (paso de arriba). Sacar este paso
-      # y los secrets HOSTINGER_FTP_* una vez confirmado que hPanel
-      # despliega solo desde esa rama. continue-on-error para que, si
-      # sigue fallando (los últimos 2 runs fallaron acá), no bloquee el
-      # resto del deploy.
-      - name: Deploy to Hostinger via FTP
-        continue-on-error: true
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.HOSTINGER_FTP_SERVER }}
-          username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
-          password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
-          local-dir: ./out/
-          server-dir: ${{ secrets.HOSTINGER_FTP_SERVER_DIR || '/public_html/' }}
