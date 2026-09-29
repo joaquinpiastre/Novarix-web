@@ -10,6 +10,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,6 +28,10 @@ jobs:
       - name: Build static export
         run: npm run build
 
+      # TEMPORAL: se mantiene mientras se valida el deploy automático de
+      # Hostinger vía la rama `deploy` (ver el paso de abajo). Sacar este
+      # paso y los secrets HOSTINGER_FTP_* una vez confirmado que hPanel
+      # despliega solo desde esa rama.
       - name: Deploy to Hostinger via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -34,3 +40,15 @@ jobs:
           password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
           local-dir: ./out/
           server-dir: ${{ secrets.HOSTINGER_FTP_SERVER_DIR || '/public_html/' }}
+
+      # Publica el sitio compilado (out/) en la rama `deploy`. Esta rama
+      # es la que hay que conectar en hPanel (Avanzado > Git > Connect
+      # with GitHub) para que Hostinger despliegue solo en cada push,
+      # sin FTP.
+      - name: Publish build to deploy branch
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./out
+          publish_branch: deploy
+          force_orphan: true
