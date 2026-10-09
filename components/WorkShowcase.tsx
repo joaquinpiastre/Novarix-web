@@ -32,12 +32,13 @@ const ACCENTS: Record<Accent, { surface: string; glow: string }> = {
 };
 
 const STATS = [
-  { value: PROJECTS.length, label: "Proyectos destacados" },
+  { prefix: "+", value: PROJECTS.length, label: "Proyectos destacados" },
   {
     value: CATEGORIES.filter((c) => PROJECTS.some((p) => p.categories.includes(c))).length,
     label: "Áreas de trabajo",
   },
   {
+    prefix: "+",
     value: PROJECTS.filter((p) => p.categories.includes("software")).length,
     label: "Sistemas a medida",
   },
@@ -354,7 +355,10 @@ export function WorkShowcase() {
       <div className="grid grid-cols-3 gap-3 sm:gap-6">
         {STATS.map((s) => (
           <div key={s.label} className="glass rounded-2xl p-4 text-center sm:p-6">
-            <p className="gradient-text font-display text-3xl font-bold sm:text-5xl">{s.value}</p>
+            <p className="gradient-text font-display text-3xl font-bold sm:text-5xl">
+              {"prefix" in s ? s.prefix : ""}
+              {s.value}
+            </p>
             <p className="mt-1 text-xs text-text-secondary sm:text-sm">{s.label}</p>
           </div>
         ))}

@@ -27,9 +27,9 @@ export default function TrabajoPage() {
               <span className="gradient-text">impacto real</span>
             </h1>
             <p className="mt-6 max-w-2xl text-lg text-text-secondary leading-relaxed">
-              Cada proyecto que tomamos es diferente. Lo que no cambia es nuestro enfoque:
-              entender el problema real antes de escribir una sola línea de código o activar una
-              sola campaña.
+              Esto es una selección de nuestros proyectos — tenemos muchos más. Cada proyecto que
+              tomamos es diferente. Lo que no cambia es nuestro enfoque: entender el problema real
+              antes de escribir una sola línea de código o activar una sola campaña.
             </p>
           </ScrollReveal>
         </div>
