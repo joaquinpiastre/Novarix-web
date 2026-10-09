@@ -1,4 +1,4 @@
-export type Category = "web" | "app" | "software" | "ia" | "marketing";
+export type Category = "web" | "app" | "software" | "ia" | "marketing" | "ecommerce";
 
 export type MockupKind = "browser" | "phone" | "dashboard" | "table" | "chat" | "route";
 
@@ -20,7 +20,7 @@ export type Project = {
   link?: { href: string; label: string };
 };
 
-export const CATEGORIES: Category[] = ["web", "app", "software", "ia", "marketing"];
+export const CATEGORIES: Category[] = ["web", "app", "software", "ia", "marketing", "ecommerce"];
 
 export const CATEGORY_LABELS: Record<Category, string> = {
   web: "Web",
@@ -28,6 +28,7 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   software: "Software a medida",
   ia: "IA y bots",
   marketing: "Marketing y redes",
+  ecommerce: "Ecommerce",
 };
 
 export const PROJECTS: Project[] = [
@@ -119,18 +120,18 @@ export const PROJECTS: Project[] = [
     id: "ceramicasa",
     title: "Ceramicasa",
     sector: "Cerámica y construcción · San Rafael",
-    type: "Desarrollo web + Marketing digital",
-    categories: ["web", "marketing"],
+    type: "Desarrollo web + Marketing digital + MercadoLibre",
+    categories: ["web", "marketing", "ecommerce"],
     mockup: "browser",
     accent: "violet",
-    summary: "Catálogo online y marketing alineados al negocio.",
+    summary: "Catálogo online, marketing y sus ventas en MercadoLibre, todo manejado por nosotros.",
     challenge:
-      "Cerámica y construcción en San Rafael: necesitaban un canal online sólido y marketing alineado al negocio.",
+      "Cerámica y construcción en San Rafael: necesitaban un canal online sólido, marketing alineado al negocio y alguien que les maneje las ventas en MercadoLibre.",
     solution:
-      "Desarrollo de la aplicación web del comercio y acompañamiento en marketing digital para acercar productos y marca a su audiencia.",
+      "Desarrollo de la aplicación web del comercio, acompañamiento en marketing digital y gestión completa de su cuenta de MercadoLibre: publicaciones, precios y ventas.",
     result:
-      "Un solo ecosistema digital para mostrar catálogo, generar confianza y sostener la comunicación comercial.",
-    services: ["Aplicación web", "Catálogo online", "Marketing digital"],
+      "Un solo ecosistema digital para mostrar catálogo, generar confianza, sostener la comunicación comercial y vender en MercadoLibre sin que el cliente tenga que ocuparse.",
+    services: ["Aplicación web", "Catálogo online", "Marketing digital", "Gestión de ventas en MercadoLibre"],
     link: {
       href: "https://www.ceramicasasanrafael.com",
       label: "ceramicasasanrafael.com",
@@ -152,5 +153,50 @@ export const PROJECTS: Project[] = [
     result:
       "Una base técnica para ordenar cobros, backoffice y flujos de trabajo en un solo lugar.",
     services: ["Sistema de pagos", "Administración", "Herramientas operativas"],
+  },
+  {
+    id: "don-ramon",
+    title: "Frigorífico Don Ramón",
+    sector: "Frigorífico",
+    type: "Sistema de gestión + Trackeo",
+    categories: ["software"],
+    mockup: "dashboard",
+    accent: "purple",
+    summary: "Sistema de gestión con trackeo para seguir la operación del frigorífico.",
+    challenge:
+      "Frigorífico que necesitaba ordenar su gestión diaria y tener trazabilidad de la operación en lugar de llevarla de forma manual.",
+    solution:
+      "Sistema de gestión a medida con trackeo para seguir el proceso y la operación del frigorífico de punta a punta.",
+    result: "Operación más ordenada y con trazabilidad real de lo que pasa en el día a día.",
+    services: ["Sistema de gestión a medida", "Trackeo de operación"],
+  },
+  {
+    id: "pena-boca-chos-malal",
+    title: "Peña de Boca de Chos Malal",
+    sector: "Club de socios · Chos Malal, Neuquén",
+    type: "Sistema para socios",
+    categories: ["software"],
+    mockup: "table",
+    accent: "magenta",
+    summary: "Sistema para ordenar y gestionar a los socios de la peña.",
+    challenge:
+      "Club de hinchas con muchos socios que necesitaba una forma ordenada de gestionarlos, en lugar de planillas sueltas.",
+    solution: "Sistema a medida para la gestión de socios de la peña.",
+    result: "Gestión de socios centralizada y mucho más simple para la comisión del club.",
+    services: ["Sistema de gestión de socios"],
+  },
+  {
+    id: "afloo",
+    title: "Afloo",
+    sector: "Ecommerce",
+    type: "Desarrollo de ecommerce",
+    categories: ["ecommerce", "web"],
+    mockup: "browser",
+    accent: "violet",
+    summary: "Tienda online a medida para vender sus productos.",
+    challenge: "Necesitaban una tienda online propia para vender sus productos.",
+    solution: "Desarrollo de un ecommerce a medida, de punta a punta.",
+    result: "Un canal de venta online propio, listo para operar.",
+    services: ["Desarrollo de ecommerce"],
   },
 ];
