@@ -1,4 +1,5 @@
 import { getSessionProfile } from "@/lib/auth/getSessionProfile";
+import { can } from "@/lib/auth/permissions";
 import { query, queryOne } from "@/lib/db";
 import { currentPeriodMonth, previousPeriodMonth } from "@/lib/utils/dates";
 import {
@@ -15,7 +16,7 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   const { userId, profile } = await getSessionProfile();
 
-  if (profile.role === "admin") {
+  if (can(profile, "dashboard.view_all")) {
     const [stats, series, agreements, paidThisMonth, pendingOneOff] = await Promise.all([
       queryOne<DashboardStats>("select * from dashboard_stats()"),
       query<MonthlyIncomePoint>("select * from monthly_income_series($1)", [6]),

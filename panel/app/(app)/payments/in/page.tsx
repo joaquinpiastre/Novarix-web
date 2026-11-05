@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth/getSessionProfile";
+import { requirePermission } from "@/lib/auth/requirePermission";
 import { query } from "@/lib/db";
 import { currentPeriodMonth } from "@/lib/utils/dates";
 import {
@@ -12,7 +12,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function PaymentsInPage() {
-  await requireAdmin();
+  await requirePermission("payments_in.manage");
 
   const [clients, agreements, paidThisMonth, pendingOneOff, history] = await Promise.all([
     query<ClientRow>("select id, name from clients order by name"),

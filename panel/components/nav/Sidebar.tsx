@@ -3,15 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
-import { LogOut } from "lucide-react";
-import { navLinksForRole } from "./links";
+import { LogOut, Search } from "lucide-react";
+import { navLinksFor } from "./links";
 import { LogoMark, LogoWordmark } from "@/components/Logo";
+import { OPEN_COMMAND_PALETTE_EVENT } from "@/components/search/CommandPalette";
 import type { Profile } from "@/lib/types/domain";
 import { ROLE_LABELS } from "@/lib/types/domain";
 
 export function Sidebar({ profile, signOut }: { profile: Profile; signOut: () => void }) {
   const pathname = usePathname();
-  const links = navLinksForRole(profile.role);
+  const links = navLinksFor(profile);
 
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-surface md:flex">
@@ -24,7 +25,22 @@ export function Sidebar({ profile, signOut }: { profile: Profile; signOut: () =>
           <p className="text-xs text-text-muted">Panel interno</p>
         </div>
       </div>
-      <nav className="flex-1 space-y-1 p-3">
+      <div className="p-3">
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new Event(OPEN_COMMAND_PALETTE_EVENT))}
+          className="flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-surface-hover px-3 py-2 text-sm text-text-muted transition-colors hover:text-text-primary"
+        >
+          <span className="flex items-center gap-2">
+            <Search size={16} />
+            Buscar…
+          </span>
+          <kbd className="rounded border border-border bg-bg px-1.5 py-0.5 text-[10px] font-medium">
+            ⌘K
+          </kbd>
+        </button>
+      </div>
+      <nav className="flex-1 space-y-1 p-3 pt-0">
         {links.map((link) => {
           const active = pathname === link.href || pathname.startsWith(link.href + "/");
           const Icon = link.icon;

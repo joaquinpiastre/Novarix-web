@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { query } from "@/lib/db";
-import { getSessionProfile, requireAdmin } from "@/lib/auth/getSessionProfile";
+import { getSessionProfile } from "@/lib/auth/getSessionProfile";
+import { can } from "@/lib/auth/permissions";
+import { requirePermission } from "@/lib/auth/requirePermission";
 import type { TaskStatus } from "@/lib/types/domain";
 
 export interface ActionState {
@@ -10,7 +12,7 @@ export interface ActionState {
 }
 
 export async function createTask(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const { userId } = await requireAdmin();
+  const { userId } = await requirePermission("tasks.manage");
 
   const title = String(formData.get("title") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
@@ -31,11 +33,11 @@ export async function createTask(_prevState: ActionState, formData: FormData): P
 export async function updateTaskStatus(taskId: string, status: TaskStatus) {
   const { userId, profile } = await getSessionProfile();
 
-  // Non-admins may only flip the status of their own assigned tasks — the
-  // UPDATE structurally never touches any other column, and the WHERE
-  // clause below is the sole authorization boundary (there's no RLS
-  // backing this up anymore, so it has to hold on its own).
-  if (profile.role === "admin") {
+  // Quien no tiene tasks.manage solo puede cambiar el estado de tareas
+  // asignadas a si mismo -- el UPDATE nunca toca otra columna, y el WHERE
+  // de abajo es la unica barrera de autorizacion (no hay RLS respaldando
+  // esto, tiene que valerse por si solo).
+  if (can(profile, "tasks.manage")) {
     await query("update tasks set status = $1, updated_at = now() where id = $2", [status, taskId]);
   } else {
     await query(
@@ -49,7 +51,7 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus) {
 }
 
 export async function deleteTask(id: string) {
-  await requireAdmin();
+  await requirePermission("tasks.manage");
   await query("delete from tasks where id = $1", [id]);
   revalidatePath("/tasks");
   revalidatePath("/dashboard");

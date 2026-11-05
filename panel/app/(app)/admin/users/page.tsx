@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminUsersPage() {
   const profiles = await query<Profile>(
-    "select id, email, full_name, role, created_at from profiles order by created_at desc"
+    "select id, email, full_name, role, created_at, must_change_password, totp_enabled from profiles order by created_at desc"
   );
 
   return (

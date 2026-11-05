@@ -35,3 +35,20 @@ export async function getUserIdForSession(token: string): Promise<string | null>
   );
   return row?.user_id ?? null;
 }
+
+/**
+ * Invalida todas las sesiones de un usuario, salvo (opcionalmente) una. Se
+ * usa al resetear una contraseña -- si quien resetea es el propio usuario
+ * (cambio de contraseña voluntario), pasale su propio token actual en
+ * `exceptToken` para no desloguearlo a mitad de la tarea.
+ */
+export async function deleteOtherSessionsForUser(
+  userId: string,
+  exceptToken?: string
+): Promise<void> {
+  if (exceptToken) {
+    await query("delete from sessions where user_id = $1 and id != $2", [userId, exceptToken]);
+  } else {
+    await query("delete from sessions where user_id = $1", [userId]);
+  }
+}

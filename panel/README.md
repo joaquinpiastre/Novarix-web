@@ -7,19 +7,30 @@ App interna (separada del sitio novarix.agency) para llevar pagos a colaboradore
 1. En tu proyecto de Railway (el mismo donde vas a alojar la app), **New → Database → Add PostgreSQL**.
 2. Andá a la pestaña **Variables** del servicio de Postgres y copiá el valor de `DATABASE_URL` (interna, solo sirve entre servicios de Railway).
 3. Para conectarte desde tu computadora (desarrollo local), andá a **Settings → Networking → Public Networking** del servicio de Postgres, activalo, y copiá el valor de `DATABASE_PUBLIC_URL` que aparece — esa es la que vas a usar en tu `.env.local`.
-4. Conectate a la base (con `psql`, TablePlus, DBeaver, o el botón **Query** del dashboard de Railway) y corré, en este orden:
-   - `db/migrations/0001_init.sql` (crea las tablas y las funciones del dashboard).
-   - `db/migrations/0002_seed.sql` — **opcional**, solo para tener datos de prueba en desarrollo. Crea 3 usuarios de prueba (`admin@novarix.test`, `programador@novarix.test`, `marketing@novarix.test`, todos con contraseña `novarix123`) más clientes, pagos y tareas de ejemplo. **No correr esto en producción.**
+4. Conectate a la base (con `psql`, TablePlus, DBeaver, o el botón **Query** del dashboard de Railway) y corré `db/migrations/0001_init.sql` una vez, a mano. De ahí en adelante **no hace falta correr nada más a mano**: el resto de las migraciones (`0002` en adelante) se aplican solas en cada deploy — ver la sección de Migraciones más abajo.
+   - `0002_seed.sql` es **opcional**, solo para tener datos de prueba en desarrollo. Crea 3 usuarios de prueba (`admin@novarix.test`, `programador@novarix.test`, `marketing@novarix.test`, todos con contraseña `novarix123`) más clientes, pagos y tareas de ejemplo. **No correr esto en producción.**
 
 ## 2. Variables de entorno
 
-Copiá `.env.local.example` a `.env.local`:
+Copiá `.env.local.example` a `.env.local` y completá:
 
 ```
 DATABASE_URL=postgresql://user:password@host:port/railway
+ENCRYPTION_KEY=                # openssl rand -base64 32
+SESSION_SECRET=                # openssl rand -base64 32 (puede ser cualquier string largo y aleatorio)
+
+# Opcionales -- sin estas, Sentry queda inactivo (no rompe nada)
+SENTRY_DSN=
+NEXT_PUBLIC_SENTRY_DSN=
+SENTRY_ORG=
+SENTRY_PROJECT=
+SENTRY_AUTH_TOKEN=
 ```
 
-En local, usá la `DATABASE_PUBLIC_URL` del paso 1.3. En producción (deploy en Railway), vas a usar la privada — ver paso 5.
+- `ENCRYPTION_KEY`: cifra secretos guardados en la base (hoy: el secreto TOTP de 2FA; a futuro: tokens de integraciones como Meta). Si la perdés, lo cifrado con ella queda irrecuperable.
+- `SESSION_SECRET`: firma el token intermedio de login en dos pasos (2FA). No reutilices `ENCRYPTION_KEY` acá a propósito, para que un compromiso de una no afecte a la otra.
+
+En local, usá la `DATABASE_PUBLIC_URL` del paso 1.3. En producción (deploy en Railway) se usa la privada — ver la sección de deploy.
 
 ## 3. Crear tu usuario admin (una sola vez)
 
@@ -30,7 +41,7 @@ insert into public.profiles (email, password_hash, full_name, role)
 values ('tu@email.com', crypt('tu-contraseña', gen_salt('bf')), 'Tu nombre', 'admin');
 ```
 
-Ya podés entrar al panel con ese email/contraseña. Desde **Usuarios** dentro del panel vas a poder crear las cuentas de programadores y marketing — el panel te va a mostrar una contraseña temporal para pasarles.
+Ya podés entrar al panel con ese email/contraseña. Desde **Usuarios** dentro del panel vas a poder crear las cuentas de programadores y marketing — el panel te va a mostrar una contraseña temporal para pasarles (esas cuentas van a tener que cambiarla en su primer ingreso).
 
 ## 4. Correr en local
 
@@ -41,7 +52,27 @@ npm run dev
 
 Se levanta en [http://localhost:3001](http://localhost:3001) (puerto distinto al del sitio principal, que corre en el 3000, así podés tener ambos abiertos a la vez).
 
-## 5. Deploy en Railway (ya configurado)
+## 5. Tests
+
+```bash
+npm test
+```
+
+Corre con Vitest. Cubre sobre todo autorización: qué puede hacer cada rol (`lib/auth/permissions.test.ts`), qué ve cada uno en la navegación (`components/nav/links.test.ts`), cifrado (`lib/crypto/encryption.test.ts`) y 2FA (`lib/auth/totp.test.ts`, `lib/auth/twoFactorPending.test.ts`). Corre automáticamente en GitHub Actions (`.github/workflows/panel-tests.yml`) en cada push/PR que toque `panel/**`.
+
+## 6. Migraciones
+
+El esquema se mantiene solo: `scripts/migrate.js` corre automáticamente antes de levantar el server (ver `scripts/start.js`) y aplica cualquier archivo nuevo de `db/migrations/*.sql` que todavía no esté aplicado, dejando registro en la tabla `schema_migrations`. **Nunca edites una migración ya aplicada** — el runner lo detecta (por checksum) y aborta el deploy en vez de arriesgarse a aplicar algo distinto a lo que ya corrió en otro lado. Si necesitás un cambio de esquema, sumá un archivo nuevo (`0010_...`, etc.).
+
+La primera vez que corre contra una base que ya tenía el esquema viejo aplicado a mano (de cuando este runner no existía todavía), se auto-detecta y registra esas migraciones como ya aplicadas sin volver a correrlas — no hace falta ningún paso manual aparte.
+
+En local, si corriste solo `0001_init.sql` a mano, podés traer tu base al día con:
+
+```bash
+npm run migrate
+```
+
+## 7. Deploy en Railway (ya configurado)
 
 Este proyecto **no** es parte del sitio estático de `novarix.agency` (ese sigue en Hostinger) — necesita un hosting que corra un servidor Next.js de verdad (no hosting estático).
 
@@ -49,26 +80,44 @@ El servicio `panel` en Railway ya está conectado al repositorio de GitHub (`joa
 - **Root Directory**: `panel` — clave, porque el repo tiene el sitio de marketing en la raíz.
 - **Watch paths**: `panel/**` — así un push que solo toca el sitio (fuera de `panel/`) no dispara un rebuild innecesario del panel.
 - `DATABASE_URL` cargada como **reference variable** a la base: `${{Postgres.DATABASE_URL}}` (conexión privada e interna).
+- **Healthcheck Path**: `/api/health` (hace un `select 1` contra la base; si falla, Railway no promueve el deploy).
 
-**Esto significa que a partir de ahora, cualquier `git push` a `main` que toque algo dentro de `panel/` redespliega solo.** Ya no hace falta correr `railway up` a mano.
+**Cualquier `git push` a `main` que toque algo dentro de `panel/` redespliega solo** — build, migraciones y arranque del server, sin intervención manual.
 
-Lo único que **no** se automatiza son los cambios de esquema: si agregás una migración nueva en `db/migrations/`, hay que correrla a mano contra la base de producción (con `railway connect postgres` o el botón Query del dashboard) — el deploy automático no ejecuta SQL por vos.
+### Backups
+
+Verificar en el dashboard de Railway del servicio de Postgres (pestaña **Backups**) que los backups automáticos estén habilitados, y cada tanto confirmar que hay backups recientes. Railway no los activa con una retención específica por defecto en todos los planes — si el plan actual no incluye backups automáticos, considerar un backup manual periódico (`pg_dump` contra `DATABASE_PUBLIC_URL`) hasta confirmar que sí los incluye.
+
+## 8. Observabilidad
+
+- `/api/health` — chequeo de salud (usado por Railway).
+- Sentry (`@sentry/nextjs`) está integrado pero **inactivo mientras no se configure `SENTRY_DSN`**. Para activarlo: crear una cuenta/proyecto en Sentry, y cargar `SENTRY_DSN` (o `NEXT_PUBLIC_SENTRY_DSN` para que valga también del lado del cliente) como variable de entorno en Railway. `SENTRY_AUTH_TOKEN`/`SENTRY_ORG`/`SENTRY_PROJECT` son solo para que el build suba sourcemaps; sin ellos el build igual funciona (sube en modo `dryRun`).
+- Logs estructurados (`lib/log.ts`) van a stdout, que Railway ya captura.
 
 ## Estructura
 
-- `app/login` — login (única ruta pública).
-- `app/(app)` — todo lo que requiere sesión: `dashboard`, `payments/out` (pagos a colaboradores), `payments/in` (cobros a clientes, solo admin), `tasks`, `reminders` (solo admin), `admin/users` (alta de usuarios, solo admin).
-- `middleware.ts` — solo chequea que exista la cookie de sesión (no puede validarla contra la base: el middleware de Next corre en un runtime que no soporta conexiones a Postgres). La validación real ocurre en `getSessionProfile()`.
+- `app/login` — login (única ruta pública), en dos pasos si el usuario tiene 2FA activado.
+- `app/(app)` — todo lo que requiere sesión: `dashboard`, `payments/out` (pagos a colaboradores), `payments/in` (cobros a clientes, solo admin), `tasks`, `reminders` (solo admin), `admin/users` (alta de usuarios, solo admin), `account` (cambio de contraseña propio y 2FA, cualquier rol).
+- `middleware.ts` — solo chequea que exista la cookie de sesión y deja pasar `/api/*` sin ese chequeo (cada ruta de API se autentica a su manera). No puede validar la sesión contra la base: el middleware de Next corre en un runtime que no soporta conexiones a Postgres. La validación real ocurre en `getSessionProfile()`.
 - `lib/db.ts` — pool de conexión a Postgres.
 - `lib/auth/session.ts` — hash/verificación de contraseñas y manejo de sesiones (tabla `sessions`, cookie httpOnly).
 - `lib/auth/getSessionProfile.ts` — lee la cookie, valida la sesión contra la base, y devuelve el usuario actual. Es el punto real de control de acceso de toda la app.
-- `db/migrations` — esquema SQL. Sin Row Level Security (esto es Postgres liso, no Supabase): las reglas de "quién ve qué" están escritas directamente en las consultas de cada página/acción (`WHERE recipient_id = $1`, etc.), no en la base.
+- `lib/auth/permissions.ts` — matriz de permisos por rol (`can()`, helpers de scope). No importa nada de `next/headers`: lo usan también componentes de cliente (la navegación).
+- `lib/auth/requirePermission.ts` — versión server-only de arriba, para páginas y server actions.
+- `lib/auth/rateLimit.ts` — límite de intentos de login (por email e IP), contra Postgres.
+- `lib/auth/totp.ts`, `lib/auth/twoFactorPending.ts` — 2FA por TOTP.
+- `lib/crypto/encryption.ts` — AES-256-GCM para secretos guardados en la base.
+- `lib/audit/log.ts` — registro de auditoría (`audit_log`) para mutaciones sensibles.
+- `scripts/migrate.js`, `scripts/bootstrap-migrations.js` — ver sección de Migraciones.
+- `db/migrations` — esquema SQL. Sin Row Level Security (esto es Postgres liso, no Supabase): las reglas de "quién ve qué" están escritas directamente en las consultas de cada página/acción (`WHERE recipient_id = $1`, etc.) y centralizadas en `lib/auth/permissions.ts`, no en la base.
 
 ## Roles
 
 - **admin** (vos): acceso total.
 - **programmer** / **marketing**: ven su propio resumen en el dashboard, su propio historial de pagos recibidos (`payments/out`), y sus tareas asignadas (más las sin asignar, pueden cambiarles el estado). No tienen acceso a `payments/in`, `reminders` ni `admin/users`.
 
-## Nota de seguridad
+## Seguridad
 
-A diferencia de una app con Supabase, acá **no hay una segunda capa de seguridad a nivel de base de datos** (RLS) — toda la restricción de acceso vive en el código de `app/(app)/**`. Si en el futuro se agrega una ruta o acción nueva que toque `payments_out`, `tasks` o `reminders`, hay que acordarse de replicar el mismo filtro por usuario que ya usan las rutas existentes (podés usarlas como referencia).
+- **No hay una segunda capa de seguridad a nivel de base de datos** (RLS) — toda la restricción de acceso vive en `lib/auth/permissions.ts` y se aplica desde `app/(app)/**` vía `requirePermission()`/`can()`. Cualquier ruta o acción nueva tiene que pasar por ahí; `lib/auth/permissions.test.ts` falla si se agrega un permiso nuevo sin un caso de test que lo cubra.
+- Login: rate limit (5 intentos fallidos / 15 min, por email y por IP), rotación de sesión, invalidación de otras sesiones al resetear contraseña, cambio de contraseña obligatorio en cuentas nuevas o reseteadas, 2FA opcional (TOTP) para cualquier rol desde **Mi cuenta**.
+- Toda alta/reseteo de usuario y toda mutación de pagos queda en `audit_log` (quién, qué, antes/después, IP).

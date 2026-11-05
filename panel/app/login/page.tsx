@@ -1,13 +1,15 @@
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { LogoMark, LogoWordmark } from "@/components/Logo";
-import { signIn } from "./actions";
+import { signIn, verifyTwoFactorCode } from "./actions";
 
 export default function LoginPage({
   searchParams,
 }: {
-  searchParams: { error?: string };
+  searchParams: { error?: string; step?: string };
 }) {
+  const isTwoFactorStep = searchParams.step === "2fa";
+
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4">
       <div
@@ -24,24 +26,47 @@ export default function LoginPage({
           <p className="mt-1 text-sm text-text-muted">Panel interno</p>
         </div>
 
-        <p className="mt-6 text-center text-sm text-text-muted">
-          Ingresá con tu cuenta para continuar.
-        </p>
-
-        <form action={signIn} className="mt-6 flex flex-col gap-4">
-          <Input label="Email" name="email" type="email" required autoComplete="email" />
-          <Input
-            label="Contraseña"
-            name="password"
-            type="password"
-            required
-            autoComplete="current-password"
-          />
-          {searchParams.error && <p className="text-sm text-danger">{searchParams.error}</p>}
-          <Button type="submit" className="mt-2 w-full">
-            Ingresar
-          </Button>
-        </form>
+        {isTwoFactorStep ? (
+          <>
+            <p className="mt-6 text-center text-sm text-text-muted">
+              Ingresá el código de tu app de autenticación (o un código de recuperación).
+            </p>
+            <form action={verifyTwoFactorCode} className="mt-6 flex flex-col gap-4">
+              <Input
+                label="Código"
+                name="code"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                autoFocus
+                required
+              />
+              {searchParams.error && <p className="text-sm text-danger">{searchParams.error}</p>}
+              <Button type="submit" className="mt-2 w-full">
+                Verificar
+              </Button>
+            </form>
+          </>
+        ) : (
+          <>
+            <p className="mt-6 text-center text-sm text-text-muted">
+              Ingresá con tu cuenta para continuar.
+            </p>
+            <form action={signIn} className="mt-6 flex flex-col gap-4">
+              <Input label="Email" name="email" type="email" required autoComplete="email" />
+              <Input
+                label="Contraseña"
+                name="password"
+                type="password"
+                required
+                autoComplete="current-password"
+              />
+              {searchParams.error && <p className="text-sm text-danger">{searchParams.error}</p>}
+              <Button type="submit" className="mt-2 w-full">
+                Ingresar
+              </Button>
+            </form>
+          </>
+        )}
       </div>
     </div>
   );

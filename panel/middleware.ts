@@ -18,5 +18,8 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg).*)"],
+  // /api/* queda afuera: cada ruta de API se autentica a su manera (ej.
+  // /api/health no necesita sesion; un futuro webhook se valida por firma,
+  // no por cookie) y debe poder responder JSON/401 en vez de un 302 a /login.
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|icon.svg).*)"],
 };

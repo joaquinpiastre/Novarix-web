@@ -1,4 +1,5 @@
 import { getSessionProfile } from "@/lib/auth/getSessionProfile";
+import { scopePaymentsOutFor } from "@/lib/auth/permissions";
 import { query } from "@/lib/db";
 import { PaymentsOutClient, type PaymentOutRow } from "./PaymentsOutClient";
 
@@ -6,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default async function PaymentsOutPage() {
   const { userId, profile } = await getSessionProfile();
-  const isAdmin = profile.role === "admin";
+  const isAdmin = scopePaymentsOutFor(profile).all;
 
   const [payments, collaborators] = await Promise.all([
     isAdmin

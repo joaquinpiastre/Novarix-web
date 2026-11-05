@@ -1,6 +1,6 @@
-import { requireAdmin } from "@/lib/auth/getSessionProfile";
+import { requirePermission } from "@/lib/auth/requirePermission";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  await requireAdmin();
+  await requirePermission("users.manage");
   return <>{children}</>;
 }

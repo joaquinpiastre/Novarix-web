@@ -1,4 +1,5 @@
 import { getSessionProfile } from "@/lib/auth/getSessionProfile";
+import { scopeTasksFor } from "@/lib/auth/permissions";
 import { query } from "@/lib/db";
 import { TasksClient, type TaskRow } from "./TasksClient";
 
@@ -6,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default async function TasksPage() {
   const { userId, profile } = await getSessionProfile();
-  const isAdmin = profile.role === "admin";
+  const isAdmin = scopeTasksFor(profile).all;
 
   const [tasks, collaborators] = await Promise.all([
     isAdmin

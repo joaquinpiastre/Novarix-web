@@ -8,6 +8,8 @@ export interface Profile {
   full_name: string;
   role: UserRole;
   created_at: string;
+  must_change_password: boolean;
+  totp_enabled: boolean;
 }
 
 export interface Client {

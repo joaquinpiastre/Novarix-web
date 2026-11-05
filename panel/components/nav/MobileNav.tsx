@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
-import { navLinksForRole } from "./links";
-import type { UserRole } from "@/lib/types/domain";
+import { navLinksFor } from "./links";
+import type { Profile } from "@/lib/types/domain";
 
-export function MobileNav({ role }: { role: UserRole }) {
+export function MobileNav({ profile }: { profile: Profile }) {
   const pathname = usePathname();
-  const links = navLinksForRole(role);
+  const links = navLinksFor(profile);
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-10 flex border-t border-border bg-surface md:hidden">

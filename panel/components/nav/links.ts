@@ -1,4 +1,5 @@
-import type { UserRole } from "@/lib/types/domain";
+import { can, type Permission } from "@/lib/auth/permissions";
+import type { Profile } from "@/lib/types/domain";
 import {
   LayoutDashboard,
   ArrowDownCircle,
@@ -6,6 +7,7 @@ import {
   CheckSquare,
   Bell,
   Users,
+  Settings,
   type LucideIcon,
 } from "lucide-react";
 
@@ -13,7 +15,8 @@ export interface NavLink {
   href: string;
   label: string;
   icon: LucideIcon;
-  roles: UserRole[];
+  /** null = visible para cualquier perfil autenticado. */
+  permission: Permission | null;
 }
 
 export const NAV_LINKS: NavLink[] = [
@@ -21,40 +24,46 @@ export const NAV_LINKS: NavLink[] = [
     href: "/dashboard",
     label: "Resumen",
     icon: LayoutDashboard,
-    roles: ["admin", "programmer", "marketing"],
+    permission: null,
   },
   {
     href: "/payments/out",
     label: "Pagos a equipo",
     icon: ArrowDownCircle,
-    roles: ["admin", "programmer", "marketing"],
+    permission: null,
   },
   {
     href: "/payments/in",
     label: "Cobros a clientes",
     icon: ArrowUpCircle,
-    roles: ["admin"],
+    permission: "payments_in.manage",
   },
   {
     href: "/tasks",
     label: "Tareas",
     icon: CheckSquare,
-    roles: ["admin", "programmer", "marketing"],
+    permission: null,
   },
   {
     href: "/reminders",
     label: "Recordatorios",
     icon: Bell,
-    roles: ["admin"],
+    permission: "reminders.manage",
   },
   {
     href: "/admin/users",
     label: "Usuarios",
     icon: Users,
-    roles: ["admin"],
+    permission: "users.manage",
+  },
+  {
+    href: "/account",
+    label: "Mi cuenta",
+    icon: Settings,
+    permission: null,
   },
 ];
 
-export function navLinksForRole(role: UserRole): NavLink[] {
-  return NAV_LINKS.filter((link) => link.roles.includes(role));
+export function navLinksFor(profile: Profile): NavLink[] {
+  return NAV_LINKS.filter((link) => link.permission === null || can(profile, link.permission));
 }

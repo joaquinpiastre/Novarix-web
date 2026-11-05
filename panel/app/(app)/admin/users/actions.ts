@@ -2,9 +2,12 @@
 
 import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { query } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth/getSessionProfile";
-import { hashPassword } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/requirePermission";
+import { hashPassword, deleteOtherSessionsForUser, SESSION_COOKIE } from "@/lib/auth/session";
+import { recordAudit } from "@/lib/audit/log";
+import { getClientIp } from "@/lib/utils/request";
 import type { UserRole } from "@/lib/types/domain";
 
 export interface CreateUserState {
@@ -20,7 +23,7 @@ export async function createCollaboratorAction(
   _prevState: CreateUserState,
   formData: FormData
 ): Promise<CreateUserState> {
-  await requireAdmin();
+  const { userId: actorId } = await requirePermission("users.manage");
 
   const full_name = String(formData.get("full_name") ?? "").trim();
   const email = String(formData.get("email") ?? "")
@@ -33,16 +36,28 @@ export async function createCollaboratorAction(
   }
 
   const tempPassword = generateTempPassword();
+  let newUserId: string;
 
   try {
-    await query(
-      "insert into profiles (email, password_hash, full_name, role) values ($1, $2, $3, $4)",
+    const [row] = await query<{ id: string }>(
+      `insert into profiles (email, password_hash, full_name, role, must_change_password)
+       values ($1, $2, $3, $4, true) returning id`,
       [email, hashPassword(tempPassword), full_name, role]
     );
+    newUserId = row.id;
   } catch (err) {
     const isDuplicateEmail = (err as { code?: string }).code === "23505";
     return { error: isDuplicateEmail ? "Ya existe un usuario con ese email." : "No se pudo crear el usuario." };
   }
+
+  await recordAudit({
+    actorId,
+    action: "users.create",
+    entityType: "profile",
+    entityId: newUserId,
+    after: { email, full_name, role },
+    ip: getClientIp(),
+  });
 
   revalidatePath("/admin/users");
   return { created: { email, tempPassword, fullName: full_name } };
@@ -57,7 +72,7 @@ export async function resetPasswordAction(
   _prevState: ResetPasswordState,
   formData: FormData
 ): Promise<ResetPasswordState> {
-  await requireAdmin();
+  const { userId: actorId } = await requirePermission("users.manage");
 
   const userId = String(formData.get("user_id") ?? "");
   const newPassword = String(formData.get("new_password") ?? "");
@@ -66,10 +81,24 @@ export async function resetPasswordAction(
     return { error: "La contraseña debe tener al menos 8 caracteres." };
   }
 
-  await query("update profiles set password_hash = $1 where id = $2", [
-    hashPassword(newPassword),
-    userId,
-  ]);
+  await query(
+    "update profiles set password_hash = $1, must_change_password = true where id = $2",
+    [hashPassword(newPassword), userId]
+  );
+
+  // Si un admin resetea su propia contraseña, no desloguearlo de en medio de
+  // la tarea: se excluye su propio token de sesion actual de la invalidacion.
+  const currentToken = cookies().get(SESSION_COOKIE)?.value;
+  const exceptToken = actorId === userId ? currentToken : undefined;
+  await deleteOtherSessionsForUser(userId, exceptToken);
+
+  await recordAudit({
+    actorId,
+    action: "users.reset_password",
+    entityType: "profile",
+    entityId: userId,
+    ip: getClientIp(),
+  });
 
   revalidatePath("/admin/users");
   return { ok: true };

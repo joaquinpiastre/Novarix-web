@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { query } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth/getSessionProfile";
+import { requirePermission } from "@/lib/auth/requirePermission";
 
 export interface ActionState {
   error?: string;
@@ -12,7 +12,7 @@ export async function createReminder(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const { userId } = await requireAdmin();
+  const { userId } = await requirePermission("reminders.manage");
 
   const title = String(formData.get("title") ?? "").trim();
   const date = String(formData.get("date") ?? "");
@@ -31,13 +31,13 @@ export async function createReminder(
 }
 
 export async function toggleReminderDone(id: string, done: boolean) {
-  const { userId } = await requireAdmin();
+  const { userId } = await requirePermission("reminders.manage");
   await query("update reminders set done = $1 where id = $2 and owner_id = $3", [done, id, userId]);
   revalidatePath("/reminders");
 }
 
 export async function deleteReminder(id: string) {
-  const { userId } = await requireAdmin();
+  const { userId } = await requirePermission("reminders.manage");
   await query("delete from reminders where id = $1 and owner_id = $2", [id, userId]);
   revalidatePath("/reminders");
 }

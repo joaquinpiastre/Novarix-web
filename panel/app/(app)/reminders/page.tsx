@@ -1,11 +1,11 @@
-import { requireAdmin } from "@/lib/auth/getSessionProfile";
+import { requirePermission } from "@/lib/auth/requirePermission";
 import { query } from "@/lib/db";
 import { RemindersClient, type ReminderRow } from "./RemindersClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function RemindersPage() {
-  const { userId } = await requireAdmin();
+  const { userId } = await requirePermission("reminders.manage");
 
   const reminders = await query<ReminderRow>(
     "select id, title, remind_at, done from reminders where owner_id = $1 order by remind_at asc",
