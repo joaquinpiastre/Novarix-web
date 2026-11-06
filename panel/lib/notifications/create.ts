@@ -16,10 +16,11 @@ export async function notify(
 
   // Best-effort: no interrumpe el flujo si falla o si Resend no esta
   // configurado (sendEmail() es un no-op sin RESEND_API_KEY).
-  const profile = await query<{ email: string }>("select email from profiles where id = $1", [
-    profileId,
-  ]);
-  if (profile[0]) {
+  const profile = await query<{ email: string; email_notifications: boolean }>(
+    "select email, email_notifications from profiles where id = $1",
+    [profileId]
+  );
+  if (profile[0]?.email_notifications) {
     await sendEmail(
       profile[0].email,
       title,

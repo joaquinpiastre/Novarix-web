@@ -20,7 +20,9 @@ import {
   type BrandKit,
   type Campaign,
   type Client,
+  type ClientFile,
   type ClientPortalRole,
+  type ClientReport,
   type ContentItem,
   type GhlBot,
   type MarketingPlan,
@@ -56,6 +58,7 @@ import type {
   AgreementRow,
   ClientServiceRow,
   ClientTeamRow,
+  ContentCommentRow,
   DailySpendPoint,
   DeliverableProgress,
   PaymentHistoryRow,
@@ -63,6 +66,7 @@ import type {
 import { MarketingTab } from "./MarketingTab";
 import { MetricsTab } from "./MetricsTab";
 import { SystemsTab } from "./SystemsTab";
+import { PortalContentTab } from "./PortalContentTab";
 
 const STATUS_TONE = {
   activo: "success",
@@ -656,6 +660,10 @@ export function ClientDetailTabs({
   projects,
   milestonesByProject,
   openTicketsCount,
+  avgCsat,
+  reports,
+  sharedFiles,
+  contentComments,
   techAssets,
   ghlBots,
 }: {
@@ -685,6 +693,10 @@ export function ClientDetailTabs({
   projects: Project[];
   milestonesByProject: Map<string, ProjectMilestone[]>;
   openTicketsCount: number;
+  avgCsat: number | null;
+  reports: ClientReport[];
+  sharedFiles: ClientFile[];
+  contentComments: ContentCommentRow[];
   techAssets: TechAsset[];
   ghlBots: GhlBot[];
 }) {
@@ -701,9 +713,12 @@ export function ClientDetailTabs({
           <Card className="max-w-2xl">
             <div className="flex items-center justify-between">
               <CardTitle>Tickets</CardTitle>
-              <Badge tone={openTicketsCount > 0 ? "warning" : "neutral"}>
-                {openTicketsCount} abierto{openTicketsCount === 1 ? "" : "s"}
-              </Badge>
+              <div className="flex items-center gap-2">
+                {avgCsat != null && <Badge tone="accent">CSAT {avgCsat.toFixed(1)}/5</Badge>}
+                <Badge tone={openTicketsCount > 0 ? "warning" : "neutral"}>
+                  {openTicketsCount} abierto{openTicketsCount === 1 ? "" : "s"}
+                </Badge>
+              </div>
             </div>
             <Link href={`/tickets?client=${client.id}`} className="mt-2 inline-block text-xs text-accent hover:underline">
               Ver tickets de este cliente →
@@ -752,6 +767,7 @@ export function ClientDetailTabs({
         brandKit={brandKit}
         assignable={allProfiles}
         canApprovePlan={full}
+        comments={contentComments}
       />
     ),
   });
@@ -769,6 +785,14 @@ export function ClientDetailTabs({
       />
     ),
   });
+
+  if (full) {
+    tabs.push({
+      id: "portal",
+      label: "Portal",
+      content: <PortalContentTab clientId={client.id} reports={reports} files={sharedFiles} />,
+    });
+  }
 
   if (canSeeSystems) {
     tabs.push({

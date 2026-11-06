@@ -3,7 +3,7 @@ import { requireClientAccess } from "@/lib/auth/requireClientAccess";
 import { can } from "@/lib/auth/permissions";
 import { query, queryOne } from "@/lib/db";
 import { CHECKLIST_ITEMS } from "@/lib/marketing/checklist";
-import { getCompanyUsers, getPendingInvites } from "@/lib/portal/queries";
+import { getClientFiles, getClientReports, getCompanyUsers, getPendingInvites } from "@/lib/portal/queries";
 import type {
   Alert,
   BrandKit,
@@ -56,6 +56,15 @@ export interface PaymentHistoryRow {
 
 export interface DeliverableProgress extends Deliverable {
   delivered: number;
+}
+
+export interface ContentCommentRow {
+  id: string;
+  entity_id: string;
+  body: string;
+  created_at: string;
+  author_name: string;
+  from_client: boolean;
 }
 
 export interface DailySpendPoint {
@@ -192,12 +201,26 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
       : Promise.resolve([]),
   ]);
 
-  const openTicketsCount = (
-    await query<{ n: string }>(
-      "select count(*)::text as n from support_tickets where client_id = $1 and status not in ('resuelto','cerrado')",
+  const ticketStats = await queryOne<{ open_count: string; avg_csat: number | null }>(
+    `select count(*) filter (where status not in ('resuelto','cerrado'))::text as open_count,
+            avg(csat_score)::float as avg_csat
+     from support_tickets where client_id = $1`,
+    [params.id]
+  );
+  const openTicketsCount = ticketStats?.open_count ?? "0";
+
+  const [reports, sharedFiles, contentComments] = await Promise.all([
+    full ? getClientReports(params.id) : Promise.resolve([]),
+    full ? getClientFiles(params.id) : Promise.resolve([]),
+    query<ContentCommentRow>(
+      `select c.id, c.entity_id, c.body, c.created_at, p.full_name as author_name,
+              (p.role = 'client') as from_client
+       from comments c join profiles p on p.id = c.author_id
+       where c.client_id = $1 and c.entity_type = 'content_item'
+       order by c.created_at asc`,
       [params.id]
-    )
-  )[0]?.n ?? "0";
+    ),
+  ]);
 
   const milestonesByProject = new Map<string, ProjectMilestone[]>();
   if (projects.length > 0) {
@@ -243,6 +266,10 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
       projects={projects}
       milestonesByProject={milestonesByProject}
       openTicketsCount={Number(openTicketsCount)}
+      avgCsat={ticketStats?.avg_csat ?? null}
+      reports={reports}
+      sharedFiles={sharedFiles}
+      contentComments={contentComments}
       techAssets={techAssets}
       ghlBots={ghlBots}
       client={client}

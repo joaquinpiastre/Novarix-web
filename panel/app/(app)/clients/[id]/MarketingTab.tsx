@@ -35,7 +35,7 @@ import {
   updateMarketingPlanStatus,
   type ActionState,
 } from "./marketingActions";
-import type { DeliverableProgress } from "./page";
+import type { ContentCommentRow, DeliverableProgress } from "./page";
 import type { BrandKit } from "@/lib/types/domain";
 
 function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: string }) {
@@ -310,11 +310,19 @@ function ContentCalendar({
   clientId,
   items,
   assignable,
+  comments,
 }: {
   clientId: string;
   items: ContentItem[];
   assignable: Pick<Profile, "id" | "full_name" | "role">[];
+  comments: ContentCommentRow[];
 }) {
+  const commentsByItem = new Map<string, ContentCommentRow[]>();
+  for (const c of comments) {
+    const list = commentsByItem.get(c.entity_id) ?? [];
+    list.push(c);
+    commentsByItem.set(c.entity_id, list);
+  }
   const [showForm, setShowForm] = useState(false);
   const [state, formAction] = useFormState<ActionState, FormData>(createContentItem, {});
 
@@ -382,6 +390,24 @@ function ContentCalendar({
                     </p>
                     {item.scheduled_at && (
                       <p className="mt-0.5 text-[11px] text-text-muted">{formatDate(item.scheduled_at)}</p>
+                    )}
+                    {(commentsByItem.get(item.id) ?? []).length > 0 && (
+                      <details className="mt-1.5">
+                        <summary className="cursor-pointer text-[11px] text-accent">
+                          {(commentsByItem.get(item.id) ?? []).length} comentario(s)
+                        </summary>
+                        <ul className="mt-1 flex flex-col gap-1">
+                          {(commentsByItem.get(item.id) ?? []).map((c) => (
+                            <li key={c.id} className="rounded bg-surface p-1.5 text-[11px] text-text-primary">
+                              <span className={c.from_client ? "font-semibold text-accent" : "font-semibold"}>
+                                {c.author_name}
+                                {c.from_client ? " (cliente)" : ""}:
+                              </span>{" "}
+                              {c.body}
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
                     )}
                     <div className="mt-2 flex items-center gap-1.5">
                       <select
@@ -475,6 +501,7 @@ export function MarketingTab({
   brandKit,
   assignable,
   canApprovePlan,
+  comments,
 }: {
   clientId: string;
   plan: MarketingPlan | null;
@@ -486,6 +513,7 @@ export function MarketingTab({
   brandKit: BrandKit | null;
   assignable: Pick<Profile, "id" | "full_name" | "role">[];
   canApprovePlan: boolean;
+  comments: ContentCommentRow[];
 }) {
   return (
     <div className="flex flex-col gap-5">
@@ -493,7 +521,7 @@ export function MarketingTab({
         <PlanCard clientId={clientId} plan={plan} deliverables={deliverables} canApprove={canApprovePlan} />
         <ChecklistCard clientId={clientId} completed={checklistCompleted} opportunities={opportunities} />
       </div>
-      <ContentCalendar clientId={clientId} items={contentItems} assignable={assignable} />
+      <ContentCalendar clientId={clientId} items={contentItems} assignable={assignable} comments={comments} />
       <div className="grid gap-5 lg:grid-cols-2">
         <CampaignsCard clientId={clientId} campaigns={campaigns} />
         <BrandKitCard clientId={clientId} brandKit={brandKit} />
