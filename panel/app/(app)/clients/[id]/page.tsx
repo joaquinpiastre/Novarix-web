@@ -4,6 +4,7 @@ import { can } from "@/lib/auth/permissions";
 import { query, queryOne } from "@/lib/db";
 import { CHECKLIST_ITEMS } from "@/lib/marketing/checklist";
 import type {
+  Alert,
   BrandKit,
   Campaign,
   Client,
@@ -13,6 +14,8 @@ import type {
   ContentItem,
   Deliverable,
   MarketingPlan,
+  MetaAsset,
+  MetaConnection,
   Profile,
   ServiceCatalogItem,
 } from "@/lib/types/domain";
@@ -48,6 +51,14 @@ export interface PaymentHistoryRow {
 
 export interface DeliverableProgress extends Deliverable {
   delivered: number;
+}
+
+export interface DailySpendPoint {
+  date: string;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  results: number;
 }
 
 export default async function ClientDetailPage({ params }: { params: { id: string } }) {
@@ -126,6 +137,33 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
     queryOne<BrandKit>("select * from brand_kits where client_id = $1", [params.id]),
   ]);
 
+  const [metaConnections, metaAssets, dailySpend, alerts] = await Promise.all([
+    query<MetaConnection>(
+      "select * from meta_connections where client_id = $1 order by created_at desc",
+      [params.id]
+    ),
+    query<MetaAsset>(
+      "select * from meta_assets where client_id = $1 and active = true order by asset_type",
+      [params.id]
+    ),
+    query<DailySpendPoint>(
+      `select date::text,
+              sum(spend)::float as spend,
+              sum(impressions)::int as impressions,
+              sum(clicks)::int as clicks,
+              (sum(leads) + sum(purchases) + sum(messaging_conversations))::int as results
+       from meta_insights_daily
+       where client_id = $1 and date >= current_date - interval '30 days'
+       group by date
+       order by date`,
+      [params.id]
+    ),
+    query<Alert>(
+      "select * from alerts where client_id = $1 and resolved = false order by created_at desc",
+      [params.id]
+    ),
+  ]);
+
   let deliverables: DeliverableProgress[] = [];
   if (currentPlan) {
     const counts = await query<{ format: string; n: string }>(
@@ -168,6 +206,10 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
       campaigns={campaigns}
       contentItems={contentItems}
       brandKit={brandKit}
+      metaConnections={metaConnections}
+      metaAssets={metaAssets}
+      dailySpend={dailySpend}
+      alerts={alerts}
     />
   );
 }

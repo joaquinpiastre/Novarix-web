@@ -9,6 +9,7 @@ import {
   Users,
   Settings,
   Building2,
+  TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 
@@ -35,6 +36,12 @@ export const NAV_LINKS: NavLink[] = [
     icon: Building2,
     permission: "clients.manage",
     extraCheck: (profile) => profile.role === "marketing",
+  },
+  {
+    href: "/marketing",
+    label: "Marketing",
+    icon: TrendingUp,
+    permission: "marketing.view_all",
   },
   {
     href: "/payments/out",

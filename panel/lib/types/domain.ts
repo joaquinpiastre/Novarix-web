@@ -186,6 +186,83 @@ export const CAMPAIGN_STATUS_LABELS: Record<CampaignStatus, string> = {
   ended: "Finalizada",
 };
 
+export type MetaConnectionStatus = "active" | "expired" | "error";
+export type MetaAssetType = "ad_account" | "page" | "instagram";
+export type AlertSeverity = "info" | "warning" | "critical";
+
+export interface MetaConnection {
+  id: string;
+  client_id: string;
+  access_token: string;
+  token_expires_at: string | null;
+  status: MetaConnectionStatus;
+  last_synced_at: string | null;
+  last_error: string | null;
+  created_by: string;
+  created_at: string;
+}
+
+export interface MetaAsset {
+  id: string;
+  connection_id: string;
+  client_id: string;
+  asset_type: MetaAssetType;
+  external_id: string;
+  name: string | null;
+  active: boolean;
+  created_at: string;
+}
+
+export interface MetaInsightDaily {
+  id: string;
+  asset_id: string;
+  client_id: string;
+  date: string;
+  level: string;
+  campaign_id: string | null;
+  campaign_name: string | null;
+  spend: number;
+  impressions: number;
+  reach: number;
+  clicks: number;
+  cpc: number | null;
+  cpm: number | null;
+  ctr: number | null;
+  messaging_conversations: number;
+  cost_per_conversation: number | null;
+  leads: number;
+  purchases: number;
+  purchase_value: number;
+}
+
+export interface SocialInsightDaily {
+  id: string;
+  asset_id: string;
+  client_id: string;
+  date: string;
+  followers: number | null;
+  follower_growth: number | null;
+  reach: number | null;
+  engagement: number | null;
+}
+
+export interface Alert {
+  id: string;
+  client_id: string;
+  severity: AlertSeverity;
+  kind: string;
+  message: string;
+  resolved: boolean;
+  resolved_at: string | null;
+  created_at: string;
+}
+
+export const META_ASSET_TYPE_LABELS: Record<MetaAssetType, string> = {
+  ad_account: "Cuenta publicitaria",
+  page: "Página de Facebook",
+  instagram: "Cuenta de Instagram",
+};
+
 export interface RecurringAgreement {
   id: string;
   client_id: string;

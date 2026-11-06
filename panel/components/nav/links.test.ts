@@ -23,6 +23,7 @@ describe("navLinksFor", () => {
     expect(hrefs(profile("admin"))).toEqual([
       "/dashboard",
       "/clients",
+      "/marketing",
       "/payments/out",
       "/payments/in",
       "/tasks",
@@ -51,10 +52,11 @@ describe("navLinksFor", () => {
     ]);
   });
 
-  it("marketing_admin ve clientes y usuarios (para altas de marketing), no cobros/pagos", () => {
+  it("marketing_admin ve clientes, marketing y usuarios (para altas de marketing), no cobros/pagos", () => {
     expect(hrefs(profile("marketing_admin"))).toEqual([
       "/dashboard",
       "/clients",
+      "/marketing",
       "/payments/out",
       "/tasks",
       "/admin/users",

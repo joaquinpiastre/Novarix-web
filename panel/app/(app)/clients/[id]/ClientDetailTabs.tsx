@@ -15,11 +15,14 @@ import { formatDate, formatMonthLabel } from "@/lib/utils/dates";
 import {
   CLIENT_STATUS_LABELS,
   ROLE_LABELS,
+  type Alert,
   type BrandKit,
   type Campaign,
   type Client,
   type ContentItem,
   type MarketingPlan,
+  type MetaAsset,
+  type MetaConnection,
   type Profile,
   type ServiceCatalogItem,
 } from "@/lib/types/domain";
@@ -36,10 +39,12 @@ import type {
   AgreementRow,
   ClientServiceRow,
   ClientTeamRow,
+  DailySpendPoint,
   DeliverableProgress,
   PaymentHistoryRow,
 } from "./page";
 import { MarketingTab } from "./MarketingTab";
+import { MetricsTab } from "./MetricsTab";
 
 const STATUS_TONE = {
   activo: "success",
@@ -401,6 +406,10 @@ export function ClientDetailTabs({
   campaigns,
   contentItems,
   brandKit,
+  metaConnections,
+  metaAssets,
+  dailySpend,
+  alerts,
 }: {
   access: ClientAccess;
   client: Client;
@@ -418,6 +427,10 @@ export function ClientDetailTabs({
   campaigns: Campaign[];
   contentItems: ContentItem[];
   brandKit: BrandKit | null;
+  metaConnections: MetaConnection[];
+  metaAssets: MetaAsset[];
+  dailySpend: DailySpendPoint[];
+  alerts: Alert[];
 }) {
   const activeServicesCount = services.filter((s) => s.status === "active").length;
   const { full } = access;
@@ -456,6 +469,20 @@ export function ClientDetailTabs({
         brandKit={brandKit}
         assignable={allProfiles}
         canApprovePlan={full}
+      />
+    ),
+  });
+
+  tabs.push({
+    id: "metricas",
+    label: "Métricas",
+    content: (
+      <MetricsTab
+        clientId={client.id}
+        connections={metaConnections}
+        assets={metaAssets}
+        dailySpend={dailySpend}
+        alerts={alerts}
       />
     ),
   });
