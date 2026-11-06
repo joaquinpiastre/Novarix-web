@@ -1,8 +1,10 @@
 "use server";
 
+import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { query, queryOne } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/requirePermission";
+import { hashPassword } from "@/lib/auth/session";
 import { recordAudit } from "@/lib/audit/log";
 import { getClientIp } from "@/lib/utils/request";
 import type { ClientStatus } from "@/lib/types/domain";
@@ -243,6 +245,72 @@ export async function removeTeamMember(formData: FormData): Promise<void> {
     action: "client_team.remove",
     entityType: "client_team",
     entityId: id,
+    ip: getClientIp(),
+  });
+
+  if (client_id) revalidatePath(`/clients/${client_id}`);
+}
+
+// ===== Usuarios del portal =====
+
+export interface CreatePortalUserState extends ActionState {
+  created?: { email: string; tempPassword: string; fullName: string };
+}
+
+export async function createPortalUser(
+  _prevState: CreatePortalUserState,
+  formData: FormData
+): Promise<CreatePortalUserState> {
+  const { userId: actorId } = await requirePermission("clients.manage");
+
+  const client_id = String(formData.get("client_id") ?? "");
+  const full_name = String(formData.get("full_name") ?? "").trim();
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase();
+  if (!client_id || !full_name || !email) {
+    return { error: "Completá nombre y email." };
+  }
+
+  const tempPassword = randomBytes(9).toString("base64url");
+
+  try {
+    await query(
+      `insert into profiles (email, password_hash, full_name, role, client_id, must_change_password)
+       values ($1, $2, $3, 'client', $4, true)`,
+      [email, hashPassword(tempPassword), full_name, client_id]
+    );
+  } catch (err) {
+    const isDuplicateEmail = (err as { code?: string }).code === "23505";
+    return { error: isDuplicateEmail ? "Ya existe un usuario con ese email." : "No se pudo crear el acceso." };
+  }
+
+  await recordAudit({
+    actorId,
+    action: "portal_users.create",
+    entityType: "client",
+    entityId: client_id,
+    after: { email, full_name },
+    ip: getClientIp(),
+  });
+
+  revalidatePath(`/clients/${client_id}`);
+  return { created: { email, tempPassword, fullName: full_name } };
+}
+
+export async function removePortalUser(formData: FormData): Promise<void> {
+  const { userId: actorId } = await requirePermission("clients.manage");
+  const id = String(formData.get("id") ?? "");
+  const client_id = String(formData.get("client_id") ?? "");
+  if (!id) return;
+
+  await query("delete from profiles where id = $1 and role = 'client'", [id]);
+
+  await recordAudit({
+    actorId,
+    action: "portal_users.remove",
+    entityType: "client",
+    entityId: client_id,
     ip: getClientIp(),
   });
 

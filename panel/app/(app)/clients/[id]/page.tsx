@@ -106,7 +106,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
       "select * from services_catalog where active = true order by category, name"
     ),
     query<Pick<Profile, "id" | "full_name" | "role">>(
-      "select id, full_name, role from profiles order by full_name"
+      "select id, full_name, role from profiles where role != 'client' order by full_name"
     ),
     canSeeFinance
       ? query<AgreementRow>(
@@ -164,6 +164,13 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
     ),
   ]);
 
+  const portalUsers = full
+    ? await query<Pick<Profile, "id" | "full_name" | "email">>(
+        "select id, full_name, email from profiles where client_id = $1 and role = 'client' order by full_name",
+        [params.id]
+      )
+    : [];
+
   let deliverables: DeliverableProgress[] = [];
   if (currentPlan) {
     const counts = await query<{ format: string; n: string }>(
@@ -210,6 +217,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
       metaAssets={metaAssets}
       dailySpend={dailySpend}
       alerts={alerts}
+      portalUsers={portalUsers}
     />
   );
 }

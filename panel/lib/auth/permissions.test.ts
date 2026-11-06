@@ -18,6 +18,7 @@ function profile(role: UserRole, id = "user-1"): Profile {
     created_at: new Date().toISOString(),
     must_change_password: false,
     totp_enabled: false,
+    client_id: role === "client" ? "some-client-id" : null,
   };
 }
 
@@ -25,27 +26,34 @@ const admin = profile("admin", "admin-1");
 const programmer = profile("programmer", "prog-1");
 const marketing = profile("marketing", "mkt-1");
 const marketingAdmin = profile("marketing_admin", "mktadmin-1");
+const clientUser = profile("client", "client-1");
 
-type Row = { admin: boolean; programmer: boolean; marketing: boolean; marketing_admin: boolean };
+type Row = {
+  admin: boolean;
+  programmer: boolean;
+  marketing: boolean;
+  marketing_admin: boolean;
+  client: boolean;
+};
 
 // Matriz exhaustiva: una fila por permiso, con el resultado esperado para
 // cada rol (sin resource). Si se agrega un Permission nuevo a ALL_PERMISSIONS
 // sin agregar su fila acá, el test de "cobertura" de más abajo falla.
 const MATRIX: Record<Permission, Row> = {
-  "dashboard.view_all": { admin: true, programmer: false, marketing: false, marketing_admin: false },
-  "payments_out.view_all": { admin: true, programmer: false, marketing: false, marketing_admin: false },
-  "payments_out.manage": { admin: true, programmer: false, marketing: false, marketing_admin: false },
-  "clients.manage": { admin: true, programmer: false, marketing: false, marketing_admin: true },
-  "client_services.manage": { admin: true, programmer: false, marketing: false, marketing_admin: true },
-  "client_team.manage": { admin: true, programmer: false, marketing: false, marketing_admin: true },
-  "payments_in.manage": { admin: true, programmer: false, marketing: false, marketing_admin: false },
-  "tasks.manage": { admin: true, programmer: false, marketing: false, marketing_admin: false },
-  "tasks.update_status": { admin: true, programmer: false, marketing: false, marketing_admin: false },
-  "reminders.manage": { admin: true, programmer: false, marketing: false, marketing_admin: false },
-  "users.manage": { admin: true, programmer: false, marketing: false, marketing_admin: false },
-  "users.create_marketing": { admin: true, programmer: false, marketing: false, marketing_admin: true },
-  "audit_log.view": { admin: true, programmer: false, marketing: false, marketing_admin: false },
-  "marketing.view_all": { admin: true, programmer: false, marketing: false, marketing_admin: true },
+  "dashboard.view_all": { admin: true, programmer: false, marketing: false, marketing_admin: false, client: false },
+  "payments_out.view_all": { admin: true, programmer: false, marketing: false, marketing_admin: false, client: false },
+  "payments_out.manage": { admin: true, programmer: false, marketing: false, marketing_admin: false, client: false },
+  "clients.manage": { admin: true, programmer: false, marketing: false, marketing_admin: true, client: false },
+  "client_services.manage": { admin: true, programmer: false, marketing: false, marketing_admin: true, client: false },
+  "client_team.manage": { admin: true, programmer: false, marketing: false, marketing_admin: true, client: false },
+  "payments_in.manage": { admin: true, programmer: false, marketing: false, marketing_admin: false, client: false },
+  "tasks.manage": { admin: true, programmer: false, marketing: false, marketing_admin: false, client: false },
+  "tasks.update_status": { admin: true, programmer: false, marketing: false, marketing_admin: false, client: false },
+  "reminders.manage": { admin: true, programmer: false, marketing: false, marketing_admin: false, client: false },
+  "users.manage": { admin: true, programmer: false, marketing: false, marketing_admin: false, client: false },
+  "users.create_marketing": { admin: true, programmer: false, marketing: false, marketing_admin: true, client: false },
+  "audit_log.view": { admin: true, programmer: false, marketing: false, marketing_admin: false, client: false },
+  "marketing.view_all": { admin: true, programmer: false, marketing: false, marketing_admin: true, client: false },
 };
 
 describe("can() — matriz rol x permiso (sin resource)", () => {
@@ -55,6 +63,7 @@ describe("can() — matriz rol x permiso (sin resource)", () => {
       expect(can(programmer, permission)).toBe(expected.programmer);
       expect(can(marketing, permission)).toBe(expected.marketing);
       expect(can(marketingAdmin, permission)).toBe(expected.marketing_admin);
+      expect(can(clientUser, permission)).toBe(expected.client);
     });
   }
 });
@@ -83,6 +92,10 @@ describe("tasks.update_status — permiso resource-aware", () => {
   it("un colaborador NO puede cambiar el estado de una tarea sin asignar (así funciona hoy)", () => {
     expect(can(programmer, "tasks.update_status", { assigned_to: null })).toBe(false);
   });
+
+  it("un usuario de portal NO puede cambiar el estado de ninguna tarea", () => {
+    expect(can(clientUser, "tasks.update_status", { assigned_to: clientUser.id })).toBe(false);
+  });
 });
 
 describe("helpers de scope", () => {
@@ -102,5 +115,6 @@ describe("helpers de scope", () => {
     expect(scopeClientsFor(marketingAdmin).all).toBe(true);
     expect(scopeClientsFor(marketing).all).toBe(false);
     expect(scopeClientsFor(programmer).all).toBe(false);
+    expect(scopeClientsFor(clientUser).all).toBe(false);
   });
 });

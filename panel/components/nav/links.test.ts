@@ -11,6 +11,7 @@ function profile(role: UserRole): Profile {
     created_at: new Date().toISOString(),
     must_change_password: false,
     totp_enabled: false,
+    client_id: null,
   };
 }
 

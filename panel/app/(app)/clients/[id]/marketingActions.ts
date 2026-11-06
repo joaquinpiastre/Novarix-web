@@ -6,6 +6,7 @@ import { requireClientAccess } from "@/lib/auth/requireClientAccess";
 import { recordAudit } from "@/lib/audit/log";
 import { getClientIp } from "@/lib/utils/request";
 import { CHECKLIST_ITEMS } from "@/lib/marketing/checklist";
+import { notifyMany } from "@/lib/notifications/create";
 import type {
   CampaignStatus,
   ContentStatus,
@@ -171,6 +172,21 @@ export async function updateContentStatus(formData: FormData): Promise<void> {
     } where id = $2`,
     [status, id]
   );
+
+  if (status === "aprobacion_cliente") {
+    const portalUsers = await query<{ id: string }>(
+      "select id from profiles where client_id = $1 and role = 'client'",
+      [client_id]
+    );
+    const item = await query<{ title: string }>("select title from content_items where id = $1", [id]);
+    await notifyMany(
+      portalUsers.map((u) => u.id),
+      "content_approval",
+      "Tenés una pieza para aprobar",
+      item[0]?.title,
+      "/portal/content"
+    );
+  }
 
   revalidatePath(`/clients/${client_id}`);
 }

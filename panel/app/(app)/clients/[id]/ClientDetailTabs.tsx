@@ -30,9 +30,12 @@ import type { ClientAccess } from "@/lib/auth/requireClientAccess";
 import {
   addClientService,
   addTeamMember,
+  createPortalUser,
   removeClientService,
+  removePortalUser,
   removeTeamMember,
   updateClient,
+  type CreatePortalUserState,
   type UpdateClientState,
 } from "../actions";
 import type {
@@ -263,14 +266,83 @@ function ServiciosTab({
   );
 }
 
+function PortalUsersCard({
+  clientId,
+  portalUsers,
+}: {
+  clientId: string;
+  portalUsers: Pick<Profile, "id" | "full_name" | "email">[];
+}) {
+  const [showForm, setShowForm] = useState(false);
+  const [state, formAction] = useFormState<CreatePortalUserState, FormData>(createPortalUser, {});
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between">
+        <CardTitle>Usuarios del portal</CardTitle>
+        <Button variant="secondary" onClick={() => setShowForm((v) => !v)}>
+          <Plus size={16} />
+          {showForm ? "Cerrar" : "Dar acceso"}
+        </Button>
+      </div>
+      <p className="mt-1 text-xs text-text-muted">
+        Pueden entrar a su propio portal (contenido para aprobar, métricas, pagos) en{" "}
+        <code>/portal</code>.
+      </p>
+
+      {showForm && (
+        <form action={formAction} className="mt-4 grid gap-4 rounded-lg border border-border bg-surface-hover p-4 sm:grid-cols-3">
+          <input type="hidden" name="client_id" value={clientId} />
+          <Input label="Nombre" name="full_name" required />
+          <Input label="Email" name="email" type="email" required />
+          {state.error && <p className="text-sm text-danger sm:col-span-3">{state.error}</p>}
+          <div className="sm:col-span-3">
+            <SubmitButton label="Crear acceso" pendingLabel="Creando…" />
+          </div>
+        </form>
+      )}
+
+      {state.created && (
+        <div className="mt-4 rounded-lg border border-accent/30 bg-accent/10 p-4 text-sm">
+          <p className="font-medium text-text-primary">Acceso creado para {state.created.fullName}.</p>
+          <p className="mt-1 text-text-muted">Pasale estos datos para que pueda ingresar:</p>
+          <p className="mt-2 font-mono text-text-primary">{state.created.email}</p>
+          <p className="font-mono text-text-primary">{state.created.tempPassword}</p>
+        </div>
+      )}
+
+      <ul className="mt-4 divide-y divide-border">
+        {portalUsers.length === 0 && <p className="text-sm text-text-muted">Sin accesos al portal todavía.</p>}
+        {portalUsers.map((u) => (
+          <li key={u.id} className="flex items-center justify-between gap-3 py-2">
+            <div>
+              <p className="text-sm text-text-primary">{u.full_name}</p>
+              <p className="text-xs text-text-muted">{u.email}</p>
+            </div>
+            <form action={removePortalUser}>
+              <input type="hidden" name="id" value={u.id} />
+              <input type="hidden" name="client_id" value={clientId} />
+              <button type="submit" className="text-text-muted hover:text-danger" aria-label="Quitar acceso">
+                <Trash2 size={16} />
+              </button>
+            </form>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
 function EquipoTab({
   clientId,
   team,
   allProfiles,
+  portalUsers,
 }: {
   clientId: string;
   team: ClientTeamRow[];
   allProfiles: Pick<Profile, "id" | "full_name" | "role">[];
+  portalUsers: Pick<Profile, "id" | "full_name" | "email">[];
 }) {
   const [showForm, setShowForm] = useState(false);
   const assignedIds = new Set(team.map((t) => t.profile_id));
@@ -331,6 +403,7 @@ function EquipoTab({
           </ul>
         )}
       </Card>
+      <PortalUsersCard clientId={clientId} portalUsers={portalUsers} />
     </div>
   );
 }
@@ -410,6 +483,7 @@ export function ClientDetailTabs({
   metaAssets,
   dailySpend,
   alerts,
+  portalUsers,
 }: {
   access: ClientAccess;
   client: Client;
@@ -431,6 +505,7 @@ export function ClientDetailTabs({
   metaAssets: MetaAsset[];
   dailySpend: DailySpendPoint[];
   alerts: Alert[];
+  portalUsers: Pick<Profile, "id" | "full_name" | "email">[];
 }) {
   const activeServicesCount = services.filter((s) => s.status === "active").length;
   const { full } = access;
@@ -449,7 +524,14 @@ export function ClientDetailTabs({
       {
         id: "equipo",
         label: `Equipo (${team.length})`,
-        content: <EquipoTab clientId={client.id} team={team} allProfiles={allProfiles} />,
+        content: (
+          <EquipoTab
+            clientId={client.id}
+            team={team}
+            allProfiles={allProfiles}
+            portalUsers={portalUsers}
+          />
+        ),
       }
     );
   }

@@ -12,7 +12,7 @@ export async function getSessionProfile(): Promise<{ userId: string; profile: Pr
   if (!userId) redirect("/login");
 
   const profile = await queryOne<Profile>(
-    "select id, email, full_name, role, created_at, must_change_password, totp_enabled from profiles where id = $1",
+    "select id, email, full_name, role, created_at, must_change_password, totp_enabled, client_id from profiles where id = $1",
     [userId]
   );
   if (!profile) redirect("/login");

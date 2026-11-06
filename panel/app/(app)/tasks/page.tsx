@@ -29,7 +29,7 @@ export default async function TasksPage() {
         ),
     isAdmin
       ? query<{ id: string; full_name: string; role: "admin" | "programmer" | "marketing" }>(
-          "select id, full_name, role from profiles order by full_name"
+          "select id, full_name, role from profiles where role != 'client' order by full_name"
         )
       : Promise.resolve([]),
   ]);

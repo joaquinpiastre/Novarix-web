@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "programmer" | "marketing" | "marketing_admin";
+export type UserRole = "admin" | "programmer" | "marketing" | "marketing_admin" | "client";
 export type TaskStatus = "pending" | "in_progress" | "done";
 export type PaymentOutType = "salary" | "bonus" | "other";
 export type ClientStatus = "prospecto" | "activo" | "pausado" | "baja";
@@ -11,6 +11,8 @@ export interface Profile {
   created_at: string;
   must_change_password: boolean;
   totp_enabled: boolean;
+  /** Solo para role === "client": a que cliente pertenece este usuario de portal. */
+  client_id: string | null;
 }
 
 export interface Client {
@@ -263,6 +265,28 @@ export const META_ASSET_TYPE_LABELS: Record<MetaAssetType, string> = {
   instagram: "Cuenta de Instagram",
 };
 
+export interface Comment {
+  id: string;
+  entity_type: string;
+  entity_id: string;
+  client_id: string;
+  author_id: string;
+  body: string;
+  visible_to_client: boolean;
+  created_at: string;
+}
+
+export interface NotificationRow {
+  id: string;
+  profile_id: string;
+  kind: string;
+  title: string;
+  body: string | null;
+  link: string | null;
+  read: boolean;
+  created_at: string;
+}
+
 export interface RecurringAgreement {
   id: string;
   client_id: string;
@@ -323,6 +347,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   programmer: "Programador",
   marketing: "Marketing",
   marketing_admin: "Marketing (admin)",
+  client: "Cliente (portal)",
 };
 
 export const CLIENT_STATUS_LABELS: Record<ClientStatus, string> = {

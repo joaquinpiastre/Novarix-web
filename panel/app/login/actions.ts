@@ -26,6 +26,10 @@ async function establishSession(userId: string) {
   cookies().set(SESSION_COOKIE, token, { ...SESSION_COOKIE_OPTS, expires: expiresAt });
 }
 
+function landingPathFor(role: string): string {
+  return role === "client" ? "/portal" : "/dashboard";
+}
+
 export async function signIn(formData: FormData) {
   const email = String(formData.get("email") ?? "")
     .trim()
@@ -39,8 +43,8 @@ export async function signIn(formData: FormData) {
     );
   }
 
-  const user = await queryOne<{ id: string; password_hash: string; totp_enabled: boolean }>(
-    "select id, password_hash, totp_enabled from profiles where email = $1",
+  const user = await queryOne<{ id: string; password_hash: string; totp_enabled: boolean; role: string }>(
+    "select id, password_hash, totp_enabled, role::text as role from profiles where email = $1",
     [email]
   );
   const valid = user ? verifyPassword(password, user.password_hash) : false;
@@ -69,7 +73,7 @@ export async function signIn(formData: FormData) {
   }
 
   await establishSession(user.id);
-  redirect("/dashboard");
+  redirect(landingPathFor(user.role));
 }
 
 export async function verifyTwoFactorCode(formData: FormData) {
@@ -89,8 +93,8 @@ export async function verifyTwoFactorCode(formData: FormData) {
   }
 
   const code = String(formData.get("code") ?? "").trim();
-  const user = await queryOne<{ totp_secret: string | null }>(
-    "select totp_secret from profiles where id = $1",
+  const user = await queryOne<{ totp_secret: string | null; role: string }>(
+    "select totp_secret, role::text as role from profiles where id = $1",
     [userId]
   );
 
@@ -119,5 +123,5 @@ export async function verifyTwoFactorCode(formData: FormData) {
 
   cookies().delete(TWO_FACTOR_PENDING_COOKIE);
   await establishSession(userId);
-  redirect("/dashboard");
+  redirect(landingPathFor(user?.role ?? "client"));
 }

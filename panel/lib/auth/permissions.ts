@@ -75,6 +75,9 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   ],
   programmer: [],
   marketing: [],
+  // No tiene ningun permiso interno -- su acceso es exclusivamente al
+  // portal (/portal), gateado por requirePortalAccess(), no por esta matriz.
+  client: [],
 };
 
 export interface TaskLikeResource {
@@ -93,7 +96,7 @@ export function can(
   resource?: TaskLikeResource
 ): boolean {
   if (ROLE_PERMISSIONS[profile.role].includes(permission)) return true;
-  if (permission === "tasks.update_status" && resource) {
+  if (permission === "tasks.update_status" && resource && profile.role !== "client") {
     return resource.assigned_to === profile.id;
   }
   return false;

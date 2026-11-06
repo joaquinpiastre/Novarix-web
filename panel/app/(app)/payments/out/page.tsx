@@ -29,7 +29,7 @@ export default async function PaymentsOutPage() {
         ),
     isAdmin
       ? query<{ id: string; full_name: string; role: "admin" | "programmer" | "marketing" }>(
-          "select id, full_name, role from profiles where role != 'admin' order by full_name"
+          "select id, full_name, role from profiles where role not in ('admin', 'client') order by full_name"
         )
       : Promise.resolve([]),
   ]);

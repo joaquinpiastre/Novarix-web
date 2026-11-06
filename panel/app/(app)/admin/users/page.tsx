@@ -12,9 +12,12 @@ export default async function AdminUsersPage() {
   const { profile } = await getSessionProfile();
   const isFullAdmin = can(profile, "users.manage");
 
+  // Los usuarios de portal (role = 'client') no son "equipo" -- se gestionan
+  // desde la ficha del cliente, no acá.
   const profiles = isFullAdmin
     ? await query<Profile>(
-        "select id, email, full_name, role, created_at, must_change_password, totp_enabled from profiles order by created_at desc"
+        `select id, email, full_name, role, created_at, must_change_password, totp_enabled, client_id
+         from profiles where role != 'client' order by created_at desc`
       )
     : [];
 
