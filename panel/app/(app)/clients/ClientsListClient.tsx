@@ -90,7 +90,13 @@ function NewClientForm({ onDone }: { onDone: () => void }) {
   );
 }
 
-export function ClientsListClient({ clients }: { clients: ClientRow[] }) {
+export function ClientsListClient({
+  clients,
+  canCreate,
+}: {
+  clients: ClientRow[];
+  canCreate: boolean;
+}) {
   const [showForm, setShowForm] = useState(false);
   const [statusFilter, setStatusFilter] = useState<ClientStatus | "all">("all");
 
@@ -118,13 +124,15 @@ export function ClientsListClient({ clients }: { clients: ClientRow[] }) {
             </button>
           ))}
         </div>
-        <Button variant="secondary" onClick={() => setShowForm((v) => !v)}>
-          <Plus size={16} />
-          {showForm ? "Cerrar" : "Nuevo cliente"}
-        </Button>
+        {canCreate && (
+          <Button variant="secondary" onClick={() => setShowForm((v) => !v)}>
+            <Plus size={16} />
+            {showForm ? "Cerrar" : "Nuevo cliente"}
+          </Button>
+        )}
       </div>
 
-      {showForm && <NewClientForm onDone={() => setShowForm(false)} />}
+      {canCreate && showForm && <NewClientForm onDone={() => setShowForm(false)} />}
 
       <Card>
         {filtered.length === 0 ? (

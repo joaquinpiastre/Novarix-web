@@ -12,7 +12,18 @@ import { Badge } from "@/components/ui/Badge";
 import { Tabs, type TabItem } from "@/components/ui/Tabs";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate, formatMonthLabel } from "@/lib/utils/dates";
-import { CLIENT_STATUS_LABELS, ROLE_LABELS, type Client, type Profile } from "@/lib/types/domain";
+import {
+  CLIENT_STATUS_LABELS,
+  ROLE_LABELS,
+  type BrandKit,
+  type Campaign,
+  type Client,
+  type ContentItem,
+  type MarketingPlan,
+  type Profile,
+  type ServiceCatalogItem,
+} from "@/lib/types/domain";
+import type { ClientAccess } from "@/lib/auth/requireClientAccess";
 import {
   addClientService,
   addTeamMember,
@@ -25,9 +36,10 @@ import type {
   AgreementRow,
   ClientServiceRow,
   ClientTeamRow,
+  DeliverableProgress,
   PaymentHistoryRow,
 } from "./page";
-import type { ServiceCatalogItem } from "@/lib/types/domain";
+import { MarketingTab } from "./MarketingTab";
 
 const STATUS_TONE = {
   activo: "success",
@@ -45,11 +57,11 @@ function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: st
   );
 }
 
-function ResumenTab({ client }: { client: Client }) {
+function ResumenTab({ client, canEdit }: { client: Client; canEdit: boolean }) {
   const [editing, setEditing] = useState(false);
   const [state, formAction] = useFormState<UpdateClientState, FormData>(updateClient, {});
 
-  if (editing) {
+  if (editing && canEdit) {
     return (
       <Card className="max-w-2xl">
         <CardTitle>Editar cliente</CardTitle>
@@ -128,9 +140,11 @@ function ResumenTab({ client }: { client: Client }) {
     <Card className="max-w-2xl">
       <div className="flex items-center justify-between">
         <CardTitle>Datos del cliente</CardTitle>
-        <Button variant="secondary" onClick={() => setEditing(true)}>
-          Editar
-        </Button>
+        {canEdit && (
+          <Button variant="secondary" onClick={() => setEditing(true)}>
+            Editar
+          </Button>
+        )}
       </div>
       <dl className="mt-4 grid gap-3 sm:grid-cols-2">
         {rows.map(([label, value]) => (
@@ -371,6 +385,7 @@ function FinanzasTab({ agreements, payments }: { agreements: AgreementRow[]; pay
 }
 
 export function ClientDetailTabs({
+  access,
   client,
   services,
   team,
@@ -379,7 +394,15 @@ export function ClientDetailTabs({
   agreements,
   payments,
   canSeeFinance,
+  currentPlan,
+  deliverables,
+  checklistCompleted,
+  opportunities,
+  campaigns,
+  contentItems,
+  brandKit,
 }: {
+  access: ClientAccess;
   client: Client;
   services: ClientServiceRow[];
   team: ClientTeamRow[];
@@ -388,22 +411,54 @@ export function ClientDetailTabs({
   agreements: AgreementRow[];
   payments: PaymentHistoryRow[];
   canSeeFinance: boolean;
+  currentPlan: MarketingPlan | null;
+  deliverables: DeliverableProgress[];
+  checklistCompleted: Set<string>;
+  opportunities: string[];
+  campaigns: Campaign[];
+  contentItems: ContentItem[];
+  brandKit: BrandKit | null;
 }) {
   const activeServicesCount = services.filter((s) => s.status === "active").length;
+  const { full } = access;
 
   const tabs: TabItem[] = [
-    { id: "resumen", label: "Resumen", content: <ResumenTab client={client} /> },
-    {
-      id: "servicios",
-      label: `Servicios (${activeServicesCount})`,
-      content: <ServiciosTab clientId={client.id} services={services} catalog={allServices} />,
-    },
-    {
-      id: "equipo",
-      label: `Equipo (${team.length})`,
-      content: <EquipoTab clientId={client.id} team={team} allProfiles={allProfiles} />,
-    },
+    { id: "resumen", label: "Resumen", content: <ResumenTab client={client} canEdit={full} /> },
   ];
+
+  if (full) {
+    tabs.push(
+      {
+        id: "servicios",
+        label: `Servicios (${activeServicesCount})`,
+        content: <ServiciosTab clientId={client.id} services={services} catalog={allServices} />,
+      },
+      {
+        id: "equipo",
+        label: `Equipo (${team.length})`,
+        content: <EquipoTab clientId={client.id} team={team} allProfiles={allProfiles} />,
+      }
+    );
+  }
+
+  tabs.push({
+    id: "marketing",
+    label: "Marketing",
+    content: (
+      <MarketingTab
+        clientId={client.id}
+        plan={currentPlan}
+        deliverables={deliverables}
+        checklistCompleted={checklistCompleted}
+        opportunities={opportunities}
+        campaigns={campaigns}
+        contentItems={contentItems}
+        brandKit={brandKit}
+        assignable={allProfiles}
+        canApprovePlan={full}
+      />
+    ),
+  });
 
   if (canSeeFinance) {
     tabs.push({

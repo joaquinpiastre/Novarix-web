@@ -18,6 +18,8 @@ export interface NavLink {
   icon: LucideIcon;
   /** null = visible para cualquier perfil autenticado; un array = alcanza con tener cualquiera de esos permisos. */
   permission: Permission | Permission[] | null;
+  /** Chequeo extra, ademas del permiso (ej: "marketing" ve /clients aunque no tenga clients.manage, filtrado a lo suyo en la pagina). */
+  extraCheck?: (profile: Profile) => boolean;
 }
 
 export const NAV_LINKS: NavLink[] = [
@@ -32,6 +34,7 @@ export const NAV_LINKS: NavLink[] = [
     label: "Clientes",
     icon: Building2,
     permission: "clients.manage",
+    extraCheck: (profile) => profile.role === "marketing",
   },
   {
     href: "/payments/out",
@@ -71,12 +74,14 @@ export const NAV_LINKS: NavLink[] = [
   },
 ];
 
-function hasAccess(profile: Profile, permission: NavLink["permission"]): boolean {
+function hasPermission(profile: Profile, permission: NavLink["permission"]): boolean {
   if (permission === null) return true;
   if (Array.isArray(permission)) return permission.some((p) => can(profile, p));
   return can(profile, permission);
 }
 
 export function navLinksFor(profile: Profile): NavLink[] {
-  return NAV_LINKS.filter((link) => hasAccess(profile, link.permission));
+  return NAV_LINKS.filter(
+    (link) => hasPermission(profile, link.permission) || link.extraCheck?.(profile)
+  );
 }

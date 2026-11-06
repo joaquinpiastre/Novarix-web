@@ -41,9 +41,10 @@ describe("navLinksFor", () => {
     ]);
   });
 
-  it("marketing ve lo mismo que programmer hoy", () => {
+  it("marketing ve clientes (filtrado a los suyos en la página) pero no cobros/pagos de otros", () => {
     expect(hrefs(profile("marketing"))).toEqual([
       "/dashboard",
+      "/clients",
       "/payments/out",
       "/tasks",
       "/account",

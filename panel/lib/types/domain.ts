@@ -61,6 +61,131 @@ export interface ClientTeamMember {
   created_at: string;
 }
 
+export type MarketingPlanStatus = "draft" | "approved" | "active" | "closed";
+export type ContentStatus =
+  | "idea"
+  | "copy"
+  | "diseno"
+  | "revision_interna"
+  | "aprobacion_cliente"
+  | "programado"
+  | "publicado";
+export type CampaignStatus = "planned" | "active" | "paused" | "ended";
+
+export interface Deliverable {
+  format: string;
+  committed: number;
+}
+
+export interface MarketingPlan {
+  id: string;
+  client_id: string;
+  period_start: string;
+  period_end: string;
+  objectives: string | null;
+  target_audience: string | null;
+  value_proposition: string | null;
+  budget_ads: number | null;
+  channels: string[];
+  deliverables: Deliverable[];
+  status: MarketingPlanStatus;
+  created_by: string;
+  approved_by: string | null;
+  approved_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Campaign {
+  id: string;
+  client_id: string;
+  marketing_plan_id: string | null;
+  name: string;
+  objective: string | null;
+  channel: string;
+  start_date: string | null;
+  end_date: string | null;
+  budget: number | null;
+  status: CampaignStatus;
+  meta_campaign_id: string | null;
+  created_by: string;
+  created_at: string;
+}
+
+export interface ContentItem {
+  id: string;
+  client_id: string;
+  marketing_plan_id: string | null;
+  channel: string;
+  format: string;
+  title: string;
+  copy: string | null;
+  attachment_url: string | null;
+  status: ContentStatus;
+  scheduled_at: string | null;
+  published_at: string | null;
+  published_url: string | null;
+  assigned_to: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ClientChecklistRow {
+  client_id: string;
+  item_key: string;
+  completed: boolean;
+  completed_at: string | null;
+  notes: string | null;
+  updated_by: string | null;
+  updated_at: string;
+}
+
+export interface BrandKit {
+  client_id: string;
+  logo_url: string | null;
+  color_palette: string | null;
+  fonts: string | null;
+  tone_of_voice: string | null;
+  references_url: string | null;
+  canva_url: string | null;
+  updated_at: string;
+}
+
+export const MARKETING_PLAN_STATUS_LABELS: Record<MarketingPlanStatus, string> = {
+  draft: "Borrador",
+  approved: "Aprobado",
+  active: "En ejecución",
+  closed: "Cerrado",
+};
+
+export const CONTENT_STATUS_LABELS: Record<ContentStatus, string> = {
+  idea: "Idea",
+  copy: "Copy",
+  diseno: "Diseño",
+  revision_interna: "Revisión interna",
+  aprobacion_cliente: "Aprobación cliente",
+  programado: "Programado",
+  publicado: "Publicado",
+};
+
+export const CONTENT_STATUS_ORDER: ContentStatus[] = [
+  "idea",
+  "copy",
+  "diseno",
+  "revision_interna",
+  "aprobacion_cliente",
+  "programado",
+  "publicado",
+];
+
+export const CAMPAIGN_STATUS_LABELS: Record<CampaignStatus, string> = {
+  planned: "Planeada",
+  active: "Activa",
+  paused: "Pausada",
+  ended: "Finalizada",
+};
+
 export interface RecurringAgreement {
   id: string;
   client_id: string;
