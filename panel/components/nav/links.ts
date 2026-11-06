@@ -10,6 +10,7 @@ import {
   Settings,
   Building2,
   TrendingUp,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 
@@ -42,6 +43,12 @@ export const NAV_LINKS: NavLink[] = [
     label: "Marketing",
     icon: TrendingUp,
     permission: "marketing.view_all",
+  },
+  {
+    href: "/systems",
+    label: "Sistemas",
+    icon: Wrench,
+    permission: "systems.manage",
   },
   {
     href: "/payments/out",

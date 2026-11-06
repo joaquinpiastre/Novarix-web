@@ -20,11 +20,16 @@ import {
   type Campaign,
   type Client,
   type ContentItem,
+  type GhlBot,
   type MarketingPlan,
   type MetaAsset,
   type MetaConnection,
   type Profile,
+  type Project,
+  type ProjectMilestone,
   type ServiceCatalogItem,
+  type SupportTicket,
+  type TechAsset,
 } from "@/lib/types/domain";
 import type { ClientAccess } from "@/lib/auth/requireClientAccess";
 import {
@@ -48,6 +53,7 @@ import type {
 } from "./page";
 import { MarketingTab } from "./MarketingTab";
 import { MetricsTab } from "./MetricsTab";
+import { SystemsTab } from "./SystemsTab";
 
 const STATUS_TONE = {
   activo: "success",
@@ -484,6 +490,12 @@ export function ClientDetailTabs({
   dailySpend,
   alerts,
   portalUsers,
+  canSeeSystems,
+  projects,
+  milestonesByProject,
+  tickets,
+  techAssets,
+  ghlBots,
 }: {
   access: ClientAccess;
   client: Client;
@@ -506,6 +518,12 @@ export function ClientDetailTabs({
   dailySpend: DailySpendPoint[];
   alerts: Alert[];
   portalUsers: Pick<Profile, "id" | "full_name" | "email">[];
+  canSeeSystems: boolean;
+  projects: Project[];
+  milestonesByProject: Map<string, ProjectMilestone[]>;
+  tickets: SupportTicket[];
+  techAssets: TechAsset[];
+  ghlBots: GhlBot[];
 }) {
   const activeServicesCount = services.filter((s) => s.status === "active").length;
   const { full } = access;
@@ -568,6 +586,24 @@ export function ClientDetailTabs({
       />
     ),
   });
+
+  if (canSeeSystems) {
+    tabs.push({
+      id: "sistemas",
+      label: "Sistemas",
+      content: (
+        <SystemsTab
+          clientId={client.id}
+          projects={projects}
+          milestonesByProject={milestonesByProject}
+          tickets={tickets}
+          techAssets={techAssets}
+          ghlBots={ghlBots}
+          assignable={allProfiles}
+        />
+      ),
+    });
+  }
 
   if (canSeeFinance) {
     tabs.push({

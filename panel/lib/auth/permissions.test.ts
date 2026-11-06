@@ -54,6 +54,7 @@ const MATRIX: Record<Permission, Row> = {
   "users.create_marketing": { admin: true, programmer: false, marketing: false, marketing_admin: true, client: false },
   "audit_log.view": { admin: true, programmer: false, marketing: false, marketing_admin: false, client: false },
   "marketing.view_all": { admin: true, programmer: false, marketing: false, marketing_admin: true, client: false },
+  "systems.manage": { admin: true, programmer: true, marketing: false, marketing_admin: false, client: false },
 };
 
 describe("can() — matriz rol x permiso (sin resource)", () => {

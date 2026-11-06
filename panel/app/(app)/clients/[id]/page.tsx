@@ -13,11 +13,16 @@ import type {
   ClientTeamMember,
   ContentItem,
   Deliverable,
+  GhlBot,
   MarketingPlan,
   MetaAsset,
   MetaConnection,
   Profile,
+  Project,
+  ProjectMilestone,
   ServiceCatalogItem,
+  SupportTicket,
+  TechAsset,
 } from "@/lib/types/domain";
 import { ClientDetailTabs } from "./ClientDetailTabs";
 
@@ -65,6 +70,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
   const access = await requireClientAccess(params.id);
   const { full } = access;
   const canSeeFinance = can(access.profile, "payments_in.manage");
+  const canSeeSystems = can(access.profile, "systems.manage");
 
   const client = await queryOne<Client>("select * from clients where id = $1", [params.id]);
   if (!client) notFound();
@@ -171,6 +177,43 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
       )
     : [];
 
+  const [projects, tickets, techAssets, ghlBots] = await Promise.all([
+    canSeeSystems
+      ? query<Project>(
+          "select * from projects where client_id = $1 order by status = 'done' or status = 'cancelled', due_date nulls last, created_at desc",
+          [params.id]
+        )
+      : Promise.resolve([]),
+    canSeeSystems
+      ? query<SupportTicket>(
+          "select * from support_tickets where client_id = $1 order by status in ('resolved','closed'), created_at desc",
+          [params.id]
+        )
+      : Promise.resolve([]),
+    canSeeSystems
+      ? query<TechAsset>(
+          "select * from tech_assets where client_id = $1 order by expires_at nulls last, created_at desc",
+          [params.id]
+        )
+      : Promise.resolve([]),
+    canSeeSystems
+      ? query<GhlBot>("select * from ghl_bots where client_id = $1 order by created_at desc", [params.id])
+      : Promise.resolve([]),
+  ]);
+
+  const milestonesByProject = new Map<string, ProjectMilestone[]>();
+  if (projects.length > 0) {
+    const milestones = await query<ProjectMilestone>(
+      "select * from project_milestones where project_id = any($1) order by done, due_date nulls last, created_at",
+      [projects.map((p) => p.id)]
+    );
+    for (const m of milestones) {
+      const list = milestonesByProject.get(m.project_id) ?? [];
+      list.push(m);
+      milestonesByProject.set(m.project_id, list);
+    }
+  }
+
   let deliverables: DeliverableProgress[] = [];
   if (currentPlan) {
     const counts = await query<{ format: string; n: string }>(
@@ -198,6 +241,12 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
   return (
     <ClientDetailTabs
       access={access}
+      canSeeSystems={canSeeSystems}
+      projects={projects}
+      milestonesByProject={milestonesByProject}
+      tickets={tickets}
+      techAssets={techAssets}
+      ghlBots={ghlBots}
       client={client}
       services={services}
       team={team}

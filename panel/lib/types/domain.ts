@@ -287,6 +287,100 @@ export interface NotificationRow {
   created_at: string;
 }
 
+export type ProjectStatus = "planning" | "in_progress" | "paused" | "done" | "cancelled";
+export type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
+export type TicketPriority = "low" | "medium" | "high" | "urgent";
+export type TechAssetType = "domain" | "hosting" | "ssl" | "other";
+
+export interface Project {
+  id: string;
+  client_id: string;
+  name: string;
+  description: string | null;
+  status: ProjectStatus;
+  start_date: string | null;
+  due_date: string | null;
+  owner_id: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProjectMilestone {
+  id: string;
+  project_id: string;
+  title: string;
+  due_date: string | null;
+  done: boolean;
+  done_at: string | null;
+  created_at: string;
+}
+
+export interface SupportTicket {
+  id: string;
+  client_id: string;
+  title: string;
+  description: string | null;
+  status: TicketStatus;
+  priority: TicketPriority;
+  created_by: string;
+  assigned_to: string | null;
+  created_at: string;
+  resolved_at: string | null;
+}
+
+export interface TechAsset {
+  id: string;
+  client_id: string;
+  asset_type: TechAssetType;
+  label: string;
+  provider: string | null;
+  expires_at: string | null;
+  notes: string | null;
+  created_by: string;
+  created_at: string;
+}
+
+export interface GhlBot {
+  id: string;
+  client_id: string;
+  name: string;
+  ghl_location_id: string | null;
+  active: boolean;
+  notes: string | null;
+  created_by: string;
+  created_at: string;
+}
+
+export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
+  planning: "Planificación",
+  in_progress: "En curso",
+  paused: "Pausado",
+  done: "Terminado",
+  cancelled: "Cancelado",
+};
+
+export const TICKET_STATUS_LABELS: Record<TicketStatus, string> = {
+  open: "Abierto",
+  in_progress: "En curso",
+  resolved: "Resuelto",
+  closed: "Cerrado",
+};
+
+export const TICKET_PRIORITY_LABELS: Record<TicketPriority, string> = {
+  low: "Baja",
+  medium: "Media",
+  high: "Alta",
+  urgent: "Urgente",
+};
+
+export const TECH_ASSET_TYPE_LABELS: Record<TechAssetType, string> = {
+  domain: "Dominio",
+  hosting: "Hosting",
+  ssl: "SSL",
+  other: "Otro",
+};
+
 export interface RecurringAgreement {
   id: string;
   client_id: string;

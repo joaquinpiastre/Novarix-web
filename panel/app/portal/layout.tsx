@@ -12,6 +12,7 @@ const PORTAL_LINKS = [
   { href: "/portal/content", label: "Contenido" },
   { href: "/portal/metrics", label: "Métricas" },
   { href: "/portal/payments", label: "Pagos" },
+  { href: "/portal/support", label: "Soporte" },
 ];
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {

@@ -25,6 +25,7 @@ describe("navLinksFor", () => {
       "/dashboard",
       "/clients",
       "/marketing",
+      "/systems",
       "/payments/out",
       "/payments/in",
       "/tasks",
@@ -34,9 +35,10 @@ describe("navLinksFor", () => {
     ]);
   });
 
-  it("programmer solo ve lo que no requiere permiso admin-only", () => {
+  it("programmer ve ademas /systems (gestiona proyectos y activos tecnicos)", () => {
     expect(hrefs(profile("programmer"))).toEqual([
       "/dashboard",
+      "/systems",
       "/payments/out",
       "/tasks",
       "/account",

@@ -23,7 +23,8 @@ export type Permission =
   | "users.manage"
   | "users.create_marketing"
   | "audit_log.view"
-  | "marketing.view_all";
+  | "marketing.view_all"
+  | "systems.manage";
 
 // Lista explícita de todos los permisos que existen. Se usa en los tests
 // para verificar que ninguno quede sin un caso que lo ejercite (ver
@@ -44,6 +45,7 @@ export const ALL_PERMISSIONS: Permission[] = [
   "users.create_marketing",
   "audit_log.view",
   "marketing.view_all",
+  "systems.manage",
 ];
 
 const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
@@ -62,6 +64,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "users.create_marketing",
     "audit_log.view",
     "marketing.view_all",
+    "systems.manage",
   ],
   // Ve y gestiona clientes/servicios/equipo y metricas de marketing de TODOS
   // los clientes, pero no sueldos, no cobros de software, no gestion de
@@ -73,7 +76,10 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "users.create_marketing",
     "marketing.view_all",
   ],
-  programmer: [],
+  // Gestiona proyectos, tickets de soporte y activos tecnicos de todos los
+  // clientes (dominio/hosting/SSL, bots de GHL) -- es el area tecnica, no
+  // tiene nada que ver con marketing/finanzas.
+  programmer: ["systems.manage"],
   marketing: [],
   // No tiene ningun permiso interno -- su acceso es exclusivamente al
   // portal (/portal), gateado por requirePortalAccess(), no por esta matriz.
