@@ -3,6 +3,7 @@ import { requireClientAccess } from "@/lib/auth/requireClientAccess";
 import { can } from "@/lib/auth/permissions";
 import { query, queryOne } from "@/lib/db";
 import { CHECKLIST_ITEMS } from "@/lib/marketing/checklist";
+import { getCompanyUsers, getPendingInvites } from "@/lib/portal/queries";
 import type {
   Alert,
   BrandKit,
@@ -21,7 +22,6 @@ import type {
   Project,
   ProjectMilestone,
   ServiceCatalogItem,
-  SupportTicket,
   TechAsset,
 } from "@/lib/types/domain";
 import { ClientDetailTabs } from "./ClientDetailTabs";
@@ -170,23 +170,14 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
     ),
   ]);
 
-  const portalUsers = full
-    ? await query<Pick<Profile, "id" | "full_name" | "email">>(
-        "select id, full_name, email from profiles where client_id = $1 and role = 'client' order by full_name",
-        [params.id]
-      )
-    : [];
+  const [companyUsers, pendingInvites] = full
+    ? await Promise.all([getCompanyUsers(params.id), getPendingInvites(params.id)])
+    : [[], []];
 
-  const [projects, tickets, techAssets, ghlBots] = await Promise.all([
+  const [projects, techAssets, ghlBots] = await Promise.all([
     canSeeSystems
       ? query<Project>(
           "select * from projects where client_id = $1 order by status = 'done' or status = 'cancelled', due_date nulls last, created_at desc",
-          [params.id]
-        )
-      : Promise.resolve([]),
-    canSeeSystems
-      ? query<SupportTicket>(
-          "select * from support_tickets where client_id = $1 order by status in ('resolved','closed'), created_at desc",
           [params.id]
         )
       : Promise.resolve([]),
@@ -200,6 +191,13 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
       ? query<GhlBot>("select * from ghl_bots where client_id = $1 order by created_at desc", [params.id])
       : Promise.resolve([]),
   ]);
+
+  const openTicketsCount = (
+    await query<{ n: string }>(
+      "select count(*)::text as n from support_tickets where client_id = $1 and status not in ('resuelto','cerrado')",
+      [params.id]
+    )
+  )[0]?.n ?? "0";
 
   const milestonesByProject = new Map<string, ProjectMilestone[]>();
   if (projects.length > 0) {
@@ -244,7 +242,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
       canSeeSystems={canSeeSystems}
       projects={projects}
       milestonesByProject={milestonesByProject}
-      tickets={tickets}
+      openTicketsCount={Number(openTicketsCount)}
       techAssets={techAssets}
       ghlBots={ghlBots}
       client={client}
@@ -266,7 +264,8 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
       metaAssets={metaAssets}
       dailySpend={dailySpend}
       alerts={alerts}
-      portalUsers={portalUsers}
+      companyUsers={companyUsers}
+      pendingInvites={pendingInvites}
     />
   );
 }

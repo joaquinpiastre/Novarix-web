@@ -15,6 +15,11 @@ export async function register() {
     startMetaSyncJob().catch((err) => {
       console.error(JSON.stringify({ level: "error", msg: "startMetaSyncJob failed", err: String(err) }));
     });
+
+    const { startTicketSlaJob } = await import("./lib/jobs/ticketSlaJob");
+    startTicketSlaJob().catch((err) => {
+      console.error(JSON.stringify({ level: "error", msg: "startTicketSlaJob failed", err: String(err) }));
+    });
   }
 
   if (process.env.NEXT_RUNTIME === "edge") {

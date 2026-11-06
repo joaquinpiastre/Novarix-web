@@ -30,7 +30,12 @@ function landingPathFor(role: string): string {
   return role === "client" ? "/portal" : "/dashboard";
 }
 
+function loginBase(formData: FormData): "/login" | "/portal/login" {
+  return formData.get("portal") === "true" ? "/portal/login" : "/login";
+}
+
 export async function signIn(formData: FormData) {
+  const base = loginBase(formData);
   const email = String(formData.get("email") ?? "")
     .trim()
     .toLowerCase();
@@ -39,7 +44,7 @@ export async function signIn(formData: FormData) {
 
   if ((await isRateLimited(`email:${email}`)) || (await isRateLimited(`ip:${ip}`))) {
     redirect(
-      `/login?error=${encodeURIComponent("Demasiados intentos. Esperá unos minutos y volvé a intentar.")}`
+      `${base}?error=${encodeURIComponent("Demasiados intentos. Esperá unos minutos y volvé a intentar.")}`
     );
   }
 
@@ -55,7 +60,7 @@ export async function signIn(formData: FormData) {
   ]);
 
   if (!user || !valid) {
-    redirect(`/login?error=${encodeURIComponent("Usuario o contraseña incorrectos")}`);
+    redirect(`${base}?error=${encodeURIComponent("Usuario o contraseña incorrectos")}`);
   }
 
   // Rotacion de sesion: si ya habia una cookie de sesion presente, se
@@ -69,7 +74,7 @@ export async function signIn(formData: FormData) {
       ...SESSION_COOKIE_OPTS,
       maxAge: 5 * 60,
     });
-    redirect("/login?step=2fa");
+    redirect(`${base}?step=2fa${base === "/portal/login" ? "&portal=true" : ""}`);
   }
 
   await establishSession(user.id);
@@ -77,18 +82,20 @@ export async function signIn(formData: FormData) {
 }
 
 export async function verifyTwoFactorCode(formData: FormData) {
+  const base = loginBase(formData);
+  const stepQs = base === "/portal/login" ? "&portal=true" : "";
   const pendingToken = cookies().get(TWO_FACTOR_PENDING_COOKIE)?.value;
   const userId = verifyPendingLoginToken(pendingToken);
 
   if (!userId) {
     redirect(
-      `/login?error=${encodeURIComponent("La verificación expiró. Iniciá sesión de nuevo.")}`
+      `${base}?error=${encodeURIComponent("La verificación expiró. Iniciá sesión de nuevo.")}`
     );
   }
 
   if (await isRateLimited(`totp:${userId}`)) {
     redirect(
-      `/login?step=2fa&error=${encodeURIComponent("Demasiados intentos. Esperá unos minutos.")}`
+      `${base}?step=2fa${stepQs}&error=${encodeURIComponent("Demasiados intentos. Esperá unos minutos.")}`
     );
   }
 
@@ -118,7 +125,7 @@ export async function verifyTwoFactorCode(formData: FormData) {
   await recordLoginAttempt(`totp:${userId}`, ok);
 
   if (!ok) {
-    redirect(`/login?step=2fa&error=${encodeURIComponent("Código inválido.")}`);
+    redirect(`${base}?step=2fa${stepQs}&error=${encodeURIComponent("Código inválido.")}`);
   }
 
   cookies().delete(TWO_FACTOR_PENDING_COOKIE);

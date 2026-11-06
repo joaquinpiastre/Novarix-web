@@ -14,7 +14,7 @@ vi.mock("next/navigation", () => ({ redirect: redirectMock }));
 const { requireClientAccess } = await import("./requireClientAccess");
 
 function profile(role: UserRole, id: string): Profile {
-  return { id, email: `${role}@novarix.test`, full_name: role, role, created_at: "", must_change_password: false, totp_enabled: false, client_id: null };
+  return { id, email: `${role}@novarix.test`, full_name: role, role, created_at: "", must_change_password: false, totp_enabled: false, client_id: null, email_notifications: true };
 }
 
 beforeEach(() => {

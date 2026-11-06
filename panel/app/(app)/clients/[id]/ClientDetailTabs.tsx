@@ -13,12 +13,14 @@ import { Tabs, type TabItem } from "@/components/ui/Tabs";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate, formatMonthLabel } from "@/lib/utils/dates";
 import {
+  CLIENT_PORTAL_ROLE_LABELS,
   CLIENT_STATUS_LABELS,
   ROLE_LABELS,
   type Alert,
   type BrandKit,
   type Campaign,
   type Client,
+  type ClientPortalRole,
   type ContentItem,
   type GhlBot,
   type MarketingPlan,
@@ -28,19 +30,21 @@ import {
   type Project,
   type ProjectMilestone,
   type ServiceCatalogItem,
-  type SupportTicket,
   type TechAsset,
 } from "@/lib/types/domain";
 import type { ClientAccess } from "@/lib/auth/requireClientAccess";
+import type { PendingInvite, PortalCompanyUser } from "@/lib/portal/queries";
 import {
   addClientService,
   addTeamMember,
-  createPortalUser,
+  cancelInvite,
+  inviteClientUser,
   removeClientService,
-  removePortalUser,
   removeTeamMember,
+  setClientUserActive,
+  startClientPreview,
   updateClient,
-  type CreatePortalUserState,
+  type InviteClientUserState,
   type UpdateClientState,
 } from "../actions";
 import {
@@ -279,13 +283,15 @@ function ServiciosTab({
 
 function PortalUsersCard({
   clientId,
-  portalUsers,
+  companyUsers,
+  pendingInvites,
 }: {
   clientId: string;
-  portalUsers: Pick<Profile, "id" | "full_name" | "email">[];
+  companyUsers: PortalCompanyUser[];
+  pendingInvites: PendingInvite[];
 }) {
   const [showForm, setShowForm] = useState(false);
-  const [state, formAction] = useFormState<CreatePortalUserState, FormData>(createPortalUser, {});
+  const [state, formAction] = useFormState<InviteClientUserState, FormData>(inviteClientUser, {});
 
   return (
     <Card>
@@ -293,53 +299,85 @@ function PortalUsersCard({
         <CardTitle>Usuarios del portal</CardTitle>
         <Button variant="secondary" onClick={() => setShowForm((v) => !v)}>
           <Plus size={16} />
-          {showForm ? "Cerrar" : "Dar acceso"}
+          {showForm ? "Cerrar" : "Invitar"}
         </Button>
       </div>
       <p className="mt-1 text-xs text-text-muted">
-        Pueden entrar a su propio portal (contenido para aprobar, métricas, pagos) en{" "}
+        Pueden entrar a su propio portal (tickets, contenido para aprobar, métricas, facturación) en{" "}
         <code>/portal</code>.
       </p>
 
       {showForm && (
         <form action={formAction} className="mt-4 grid gap-4 rounded-lg border border-border bg-surface-hover p-4 sm:grid-cols-3">
           <input type="hidden" name="client_id" value={clientId} />
-          <Input label="Nombre" name="full_name" required />
           <Input label="Email" name="email" type="email" required />
+          <Select label="Rol" name="client_role" defaultValue="member">
+            <option value="owner">Titular</option>
+            <option value="member">Miembro</option>
+          </Select>
           {state.error && <p className="text-sm text-danger sm:col-span-3">{state.error}</p>}
           <div className="sm:col-span-3">
-            <SubmitButton label="Crear acceso" pendingLabel="Creando…" />
+            <SubmitButton label="Enviar invitación" pendingLabel="Enviando…" />
           </div>
         </form>
       )}
 
-      {state.created && (
-        <div className="mt-4 rounded-lg border border-accent/30 bg-accent/10 p-4 text-sm">
-          <p className="font-medium text-text-primary">Acceso creado para {state.created.fullName}.</p>
-          <p className="mt-1 text-text-muted">Pasale estos datos para que pueda ingresar:</p>
-          <p className="mt-2 font-mono text-text-primary">{state.created.email}</p>
-          <p className="font-mono text-text-primary">{state.created.tempPassword}</p>
-        </div>
+      {state.sent && (
+        <p className="mt-4 text-sm text-success">Invitación enviada a {state.sent.email}.</p>
       )}
 
       <ul className="mt-4 divide-y divide-border">
-        {portalUsers.length === 0 && <p className="text-sm text-text-muted">Sin accesos al portal todavía.</p>}
-        {portalUsers.map((u) => (
+        {companyUsers.length === 0 && <p className="text-sm text-text-muted">Sin accesos al portal todavía.</p>}
+        {companyUsers.map((u) => (
           <li key={u.id} className="flex items-center justify-between gap-3 py-2">
             <div>
               <p className="text-sm text-text-primary">{u.full_name}</p>
               <p className="text-xs text-text-muted">{u.email}</p>
             </div>
-            <form action={removePortalUser}>
-              <input type="hidden" name="id" value={u.id} />
-              <input type="hidden" name="client_id" value={clientId} />
-              <button type="submit" className="text-text-muted hover:text-danger" aria-label="Quitar acceso">
-                <Trash2 size={16} />
-              </button>
-            </form>
+            <div className="flex items-center gap-2">
+              <Badge tone={u.client_role === "owner" ? "accent" : "neutral"}>
+                {CLIENT_PORTAL_ROLE_LABELS[u.client_role as ClientPortalRole]}
+              </Badge>
+              {!u.active && <Badge tone="warning">Inactivo</Badge>}
+              <form action={setClientUserActive}>
+                <input type="hidden" name="id" value={u.id} />
+                <input type="hidden" name="client_id" value={clientId} />
+                <input type="hidden" name="active" value={String(!u.active)} />
+                <button type="submit" className="text-text-muted hover:text-danger" aria-label={u.active ? "Desactivar" : "Reactivar"}>
+                  <Trash2 size={16} />
+                </button>
+              </form>
+            </div>
           </li>
         ))}
       </ul>
+
+      {pendingInvites.length > 0 && (
+        <div className="mt-4 border-t border-border pt-3">
+          <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Invitaciones pendientes</p>
+          <ul className="mt-2 divide-y divide-border">
+            {pendingInvites.map((i) => (
+              <li key={i.id} className="flex items-center justify-between gap-2 py-1.5">
+                <span className="text-sm text-text-muted">{i.email}</span>
+                <form action={cancelInvite}>
+                  <input type="hidden" name="id" value={i.id} />
+                  <input type="hidden" name="client_id" value={clientId} />
+                  <button type="submit" className="text-xs text-danger hover:underline">
+                    Cancelar
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <form action={startClientPreview} className="mt-4 border-t border-border pt-3">
+        <input type="hidden" name="client_id" value={clientId} />
+        <button type="submit" className="text-xs text-accent hover:underline">
+          Ver como este cliente →
+        </button>
+      </form>
     </Card>
   );
 }
@@ -348,12 +386,14 @@ function EquipoTab({
   clientId,
   team,
   allProfiles,
-  portalUsers,
+  companyUsers,
+  pendingInvites,
 }: {
   clientId: string;
   team: ClientTeamRow[];
   allProfiles: Pick<Profile, "id" | "full_name" | "role">[];
-  portalUsers: Pick<Profile, "id" | "full_name" | "email">[];
+  companyUsers: PortalCompanyUser[];
+  pendingInvites: PendingInvite[];
 }) {
   const [showForm, setShowForm] = useState(false);
   const assignedIds = new Set(team.map((t) => t.profile_id));
@@ -414,7 +454,7 @@ function EquipoTab({
           </ul>
         )}
       </Card>
-      <PortalUsersCard clientId={clientId} portalUsers={portalUsers} />
+      <PortalUsersCard clientId={clientId} companyUsers={companyUsers} pendingInvites={pendingInvites} />
     </div>
   );
 }
@@ -610,11 +650,12 @@ export function ClientDetailTabs({
   metaAssets,
   dailySpend,
   alerts,
-  portalUsers,
+  companyUsers,
+  pendingInvites,
   canSeeSystems,
   projects,
   milestonesByProject,
-  tickets,
+  openTicketsCount,
   techAssets,
   ghlBots,
 }: {
@@ -638,11 +679,12 @@ export function ClientDetailTabs({
   metaAssets: MetaAsset[];
   dailySpend: DailySpendPoint[];
   alerts: Alert[];
-  portalUsers: Pick<Profile, "id" | "full_name" | "email">[];
+  companyUsers: PortalCompanyUser[];
+  pendingInvites: PendingInvite[];
   canSeeSystems: boolean;
   projects: Project[];
   milestonesByProject: Map<string, ProjectMilestone[]>;
-  tickets: SupportTicket[];
+  openTicketsCount: number;
   techAssets: TechAsset[];
   ghlBots: GhlBot[];
 }) {
@@ -650,7 +692,26 @@ export function ClientDetailTabs({
   const { full } = access;
 
   const tabs: TabItem[] = [
-    { id: "resumen", label: "Resumen", content: <ResumenTab client={client} canEdit={full} /> },
+    {
+      id: "resumen",
+      label: "Resumen",
+      content: (
+        <div className="flex flex-col gap-5">
+          <ResumenTab client={client} canEdit={full} />
+          <Card className="max-w-2xl">
+            <div className="flex items-center justify-between">
+              <CardTitle>Tickets</CardTitle>
+              <Badge tone={openTicketsCount > 0 ? "warning" : "neutral"}>
+                {openTicketsCount} abierto{openTicketsCount === 1 ? "" : "s"}
+              </Badge>
+            </div>
+            <Link href={`/tickets?client=${client.id}`} className="mt-2 inline-block text-xs text-accent hover:underline">
+              Ver tickets de este cliente →
+            </Link>
+          </Card>
+        </div>
+      ),
+    },
   ];
 
   if (full) {
@@ -668,7 +729,8 @@ export function ClientDetailTabs({
             clientId={client.id}
             team={team}
             allProfiles={allProfiles}
-            portalUsers={portalUsers}
+            companyUsers={companyUsers}
+            pendingInvites={pendingInvites}
           />
         ),
       }
@@ -717,7 +779,6 @@ export function ClientDetailTabs({
           clientId={client.id}
           projects={projects}
           milestonesByProject={milestonesByProject}
-          tickets={tickets}
           techAssets={techAssets}
           ghlBots={ghlBots}
           assignable={allProfiles}

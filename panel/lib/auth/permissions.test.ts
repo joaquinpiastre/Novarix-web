@@ -5,6 +5,7 @@ import {
   scopeClientsFor,
   scopePaymentsOutFor,
   scopeTasksFor,
+  scopeTicketsFor,
   type Permission,
 } from "./permissions";
 import type { Profile, UserRole } from "@/lib/types/domain";
@@ -19,6 +20,7 @@ function profile(role: UserRole, id = "user-1"): Profile {
     must_change_password: false,
     totp_enabled: false,
     client_id: role === "client" ? "some-client-id" : null,
+    email_notifications: true,
   };
 }
 
@@ -55,6 +57,7 @@ const MATRIX: Record<Permission, Row> = {
   "audit_log.view": { admin: true, programmer: false, marketing: false, marketing_admin: false, client: false },
   "marketing.view_all": { admin: true, programmer: false, marketing: false, marketing_admin: true, client: false },
   "systems.manage": { admin: true, programmer: true, marketing: false, marketing_admin: false, client: false },
+  "tickets.manage_all": { admin: true, programmer: false, marketing: false, marketing_admin: true, client: false },
 };
 
 describe("can() — matriz rol x permiso (sin resource)", () => {
@@ -117,5 +120,12 @@ describe("helpers de scope", () => {
     expect(scopeClientsFor(marketing).all).toBe(false);
     expect(scopeClientsFor(programmer).all).toBe(false);
     expect(scopeClientsFor(clientUser).all).toBe(false);
+  });
+
+  it("scopeTicketsFor: all=true para admin y marketing_admin; programmer/marketing solo ven lo asignado", () => {
+    expect(scopeTicketsFor(admin).all).toBe(true);
+    expect(scopeTicketsFor(marketingAdmin).all).toBe(true);
+    expect(scopeTicketsFor(programmer).all).toBe(false);
+    expect(scopeTicketsFor(marketing).all).toBe(false);
   });
 });

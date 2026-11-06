@@ -6,7 +6,7 @@ import { requireClientAccess } from "@/lib/auth/requireClientAccess";
 import { requirePermission } from "@/lib/auth/requirePermission";
 import { recordAudit } from "@/lib/audit/log";
 import { getClientIp } from "@/lib/utils/request";
-import type { ProjectStatus, TechAssetType, TicketPriority, TicketStatus } from "@/lib/types/domain";
+import type { ProjectStatus, TechAssetType } from "@/lib/types/domain";
 
 export interface ActionState {
   error?: string;
@@ -103,45 +103,9 @@ export async function deleteMilestone(formData: FormData): Promise<void> {
   revalidatePath(`/clients/${client_id}`);
 }
 
-// ===== Tickets de soporte =====
-// (createTicket/addTicketComment internos; el cliente los crea desde el
-// portal via app/portal/support/actions.ts, no por acá.)
-
-export async function createTicket(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  const client_id = String(formData.get("client_id") ?? "");
-  await requirePermission("systems.manage");
-  const { userId: actorId } = await requireClientAccess(client_id);
-
-  const title = String(formData.get("title") ?? "").trim();
-  if (!title) return { error: "Completá el título del ticket." };
-  const description = String(formData.get("description") ?? "").trim() || null;
-  const priority = (String(formData.get("priority") ?? "medium") || "medium") as TicketPriority;
-
-  await query(
-    `insert into support_tickets (client_id, title, description, priority, created_by)
-     values ($1,$2,$3,$4,$5)`,
-    [client_id, title, description, priority, actorId]
-  );
-
-  revalidatePath(`/clients/${client_id}`);
-  return {};
-}
-
-export async function updateTicketStatus(formData: FormData): Promise<void> {
-  const id = String(formData.get("id") ?? "");
-  const client_id = String(formData.get("client_id") ?? "");
-  const status = String(formData.get("status") ?? "") as TicketStatus;
-  await requirePermission("systems.manage");
-  await requireClientAccess(client_id);
-  if (!id || !status) return;
-
-  const resolving = status === "resolved" || status === "closed";
-  await query(
-    `update support_tickets set status = $1${resolving ? ", resolved_at = coalesce(resolved_at, now())" : ""} where id = $2`,
-    [status, id]
-  );
-  revalidatePath(`/clients/${client_id}`);
-}
+// Los tickets ya no se gestionan acá: viven en /tickets (lado equipo) y
+// /portal/tickets (lado cliente), con su propio modelo (lib/tickets/*,
+// app/(app)/tickets/actions.ts). Ver migración 0018.
 
 // ===== Activos tecnicos =====
 

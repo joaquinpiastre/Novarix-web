@@ -12,6 +12,7 @@ function profile(role: UserRole): Profile {
     must_change_password: false,
     totp_enabled: false,
     client_id: null,
+    email_notifications: true,
   };
 }
 
@@ -29,6 +30,7 @@ describe("navLinksFor", () => {
       "/payments/out",
       "/payments/in",
       "/finance",
+      "/tickets",
       "/tasks",
       "/reminders",
       "/admin/users",
@@ -36,11 +38,12 @@ describe("navLinksFor", () => {
     ]);
   });
 
-  it("programmer ve ademas /systems (gestiona proyectos y activos tecnicos)", () => {
+  it("programmer ve ademas /systems y /tickets (gestiona proyectos, activos tecnicos y soporte de sus clientes)", () => {
     expect(hrefs(profile("programmer"))).toEqual([
       "/dashboard",
       "/systems",
       "/payments/out",
+      "/tickets",
       "/tasks",
       "/account",
     ]);
@@ -51,6 +54,7 @@ describe("navLinksFor", () => {
       "/dashboard",
       "/clients",
       "/payments/out",
+      "/tickets",
       "/tasks",
       "/account",
     ]);
@@ -62,6 +66,7 @@ describe("navLinksFor", () => {
       "/clients",
       "/marketing",
       "/payments/out",
+      "/tickets",
       "/tasks",
       "/admin/users",
       "/account",

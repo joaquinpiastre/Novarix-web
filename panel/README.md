@@ -19,12 +19,23 @@ DATABASE_URL=postgresql://user:password@host:port/railway
 ENCRYPTION_KEY=                # openssl rand -base64 32
 SESSION_SECRET=                # openssl rand -base64 32 (puede ser cualquier string largo y aleatorio)
 
-# Opcionales -- sin estas, Sentry queda inactivo (no rompe nada)
+# Bucket de archivos (adjuntos de tickets, reportes, archivos compartidos).
+# En producción son "reference variables" de Railway, apuntando al bucket
+# del proyecto -- nunca se escriben a mano.
+BUCKET_ENDPOINT=
+BUCKET_ACCESS_KEY_ID=
+BUCKET_SECRET_ACCESS_KEY=
+BUCKET_REGION=
+BUCKET_NAME=
+
+# Opcionales -- sin estas, Sentry/Resend quedan inactivos (no rompe nada)
 SENTRY_DSN=
 NEXT_PUBLIC_SENTRY_DSN=
 SENTRY_ORG=
 SENTRY_PROJECT=
 SENTRY_AUTH_TOKEN=
+RESEND_API_KEY=
+RESEND_FROM=
 ```
 
 - `ENCRYPTION_KEY`: cifra secretos guardados en la base (hoy: el secreto TOTP de 2FA; a futuro: tokens de integraciones como Meta). Si la perdés, lo cifrado con ella queda irrecuperable.
@@ -115,6 +126,51 @@ Verificar en el dashboard de Railway del servicio de Postgres (pestaña **Backup
 
 - **admin** (vos): acceso total.
 - **programmer** / **marketing**: ven su propio resumen en el dashboard, su propio historial de pagos recibidos (`payments/out`), y sus tareas asignadas (más las sin asignar, pueden cambiarles el estado). No tienen acceso a `payments/in`, `reminders` ni `admin/users`.
+
+## Portal de clientes
+
+Ver `ARCHITECTURE.md` para el modelo de datos completo y la matriz de
+permisos del rol `client`. Resumen:
+
+- Alta por **invitación** (link firmado, un solo uso, 72hs) desde la ficha
+  del cliente o desde **Mi cuenta** del propio portal (el `owner` invita a
+  sus compañeros como `member`) — no más contraseñas temporales en pantalla.
+- Login separado en `/portal/login`, con recuperación de contraseña propia
+  (`/portal/forgot-password`).
+- **Tickets** (`/tickets` del lado del equipo, `/portal/tickets` del lado
+  del cliente): reclamo, pedido/cambio, soporte técnico, consulta, pedido
+  de contenido o facturación, con SLA por prioridad (horario hábil,
+  America/Argentina/Mendoza), hilo de mensajes (con notas internas que el
+  cliente nunca ve), adjuntos, auto-asignación por tipo, y encuesta de
+  satisfacción al cerrar. Métricas en `/tickets/metrics`.
+- Modo **"ver como cliente"** (solo lectura, auditado) para admin/
+  marketing_admin desde Cliente 360.
+- Dominio dedicado `clientes.novarix.agency` — requiere agregar un CNAME y
+  un TXT de verificación en el DNS de `novarix.agency` (valores exactos en
+  `ARCHITECTURE.md`); mientras no se agreguen, el portal sigue funcionando
+  normal en `panel.novarix.agency/portal`.
+
+### Checklist de prueba manual
+
+- [ ] Invitar un usuario nuevo desde Cliente 360, aceptar la invitación
+      (`/portal/accept-invite?token=...`) y loguearse en `/portal/login`.
+- [ ] Como ese cliente, intentar entrar a `/clients`, `/tasks`, `/tickets`
+      (rutas internas) — debe redirigir a `/portal`.
+- [ ] Como cliente A, anotar el ID de un ticket/archivo/reporte propio;
+      logueado como cliente B, pegar esa URL/ID a mano — debe dar 403 o
+      "no encontrado", nunca el dato de A.
+- [ ] Abrir un ticket desde el portal con un adjunto, verificar que llega
+      la notificación al equipo, responder desde `/tickets/[id]`, verificar
+      que el cliente ve la respuesta pero no las notas marcadas "interna".
+- [ ] Marcar un ticket resuelto desde el portal, reabrirlo (debe funcionar
+      dentro de los 7 días), y completar la encuesta de satisfacción al
+      cerrarlo.
+- [ ] Desde Cliente 360, usar "ver como cliente" — confirmar que las
+      acciones de escritura del portal devuelven el error de solo lectura,
+      y que `audit_log` registra el acceso.
+- [ ] Como `owner`, invitar y luego desactivar a un `member` desde
+      `/portal/account` — confirmar que el `member` desactivado no puede
+      volver a loguearse.
 
 ## Seguridad
 

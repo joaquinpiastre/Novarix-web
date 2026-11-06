@@ -22,6 +22,7 @@ function profile(role: UserRole, id: string): Profile {
     must_change_password: false,
     totp_enabled: false,
     client_id: null,
+    email_notifications: true,
   };
 }
 

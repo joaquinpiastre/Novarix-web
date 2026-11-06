@@ -11,8 +11,35 @@ export interface Profile {
   created_at: string;
   must_change_password: boolean;
   totp_enabled: boolean;
-  /** Solo para role === "client": a que cliente pertenece este usuario de portal. */
+  /**
+   * Solo para role === "client", modelo viejo (un usuario por cliente).
+   * El codigo nuevo usa client_users (ClientUser) en vez de esta columna --
+   * queda para compatibilidad de lectura, no se escribe mas.
+   */
   client_id: string | null;
+  email_notifications: boolean;
+}
+
+export type ClientPortalRole = "owner" | "member";
+
+export interface ClientUser {
+  id: string;
+  profile_id: string;
+  client_id: string;
+  client_role: ClientPortalRole;
+  active: boolean;
+  created_at: string;
+}
+
+export interface ClientInvite {
+  id: string;
+  client_id: string;
+  email: string;
+  client_role: ClientPortalRole;
+  invited_by: string;
+  expires_at: string;
+  accepted_at: string | null;
+  created_at: string;
 }
 
 export interface Client {
@@ -292,8 +319,21 @@ export interface NotificationRow {
 }
 
 export type ProjectStatus = "planning" | "in_progress" | "paused" | "done" | "cancelled";
-export type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
+export type TicketStatus =
+  | "nuevo"
+  | "en_revision"
+  | "en_curso"
+  | "esperando_cliente"
+  | "resuelto"
+  | "cerrado";
 export type TicketPriority = "low" | "medium" | "high" | "urgent";
+export type TicketType =
+  | "reclamo"
+  | "pedido_cambio"
+  | "soporte_tecnico"
+  | "consulta"
+  | "pedido_contenido"
+  | "facturacion";
 export type TechAssetType = "domain" | "hosting" | "ssl" | "other";
 
 export interface Project {
@@ -322,15 +362,80 @@ export interface ProjectMilestone {
 
 export interface SupportTicket {
   id: string;
+  number: string;
   client_id: string;
   title: string;
   description: string | null;
+  ticket_type: TicketType;
+  related_service_id: string | null;
+  related_project_id: string | null;
   status: TicketStatus;
   priority: TicketPriority;
   created_by: string;
   assigned_to: string | null;
   created_at: string;
   resolved_at: string | null;
+  first_response_at: string | null;
+  sla_due_at: string | null;
+  csat_score: number | null;
+  csat_comment: string | null;
+  reopened_until: string | null;
+}
+
+export interface TicketMessage {
+  id: string;
+  ticket_id: string;
+  author_id: string;
+  body: string;
+  internal: boolean;
+  created_at: string;
+}
+
+export interface TicketAttachment {
+  id: string;
+  ticket_id: string;
+  message_id: string | null;
+  uploaded_by: string;
+  storage_key: string;
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+  created_at: string;
+}
+
+export interface TicketEvent {
+  id: string;
+  ticket_id: string;
+  actor_id: string | null;
+  event_type: string;
+  from_value: string | null;
+  to_value: string | null;
+  created_at: string;
+}
+
+export interface ClientReport {
+  id: string;
+  client_id: string;
+  title: string;
+  period_month: string | null;
+  storage_key: string;
+  filename: string;
+  published_by: string;
+  created_at: string;
+}
+
+export type ClientFileDirection = "from_client" | "from_novarix";
+
+export interface ClientFile {
+  id: string;
+  client_id: string;
+  uploaded_by: string;
+  direction: ClientFileDirection;
+  storage_key: string;
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+  created_at: string;
 }
 
 export interface TechAsset {
@@ -365,17 +470,52 @@ export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
 };
 
 export const TICKET_STATUS_LABELS: Record<TicketStatus, string> = {
-  open: "Abierto",
-  in_progress: "En curso",
-  resolved: "Resuelto",
-  closed: "Cerrado",
+  nuevo: "Nuevo",
+  en_revision: "En revisión",
+  en_curso: "En curso",
+  esperando_cliente: "Esperando al cliente",
+  resuelto: "Resuelto",
+  cerrado: "Cerrado",
 };
+
+export const TICKET_STATUS_ORDER: TicketStatus[] = [
+  "nuevo",
+  "en_revision",
+  "en_curso",
+  "esperando_cliente",
+  "resuelto",
+  "cerrado",
+];
+
+export const OPEN_TICKET_STATUSES: TicketStatus[] = [
+  "nuevo",
+  "en_revision",
+  "en_curso",
+  "esperando_cliente",
+];
 
 export const TICKET_PRIORITY_LABELS: Record<TicketPriority, string> = {
   low: "Baja",
   medium: "Media",
   high: "Alta",
   urgent: "Urgente",
+};
+
+export const TICKET_TYPE_LABELS: Record<TicketType, string> = {
+  reclamo: "Reclamo",
+  pedido_cambio: "Pedido / cambio",
+  soporte_tecnico: "Soporte técnico / error",
+  consulta: "Consulta",
+  pedido_contenido: "Pedido de contenido",
+  facturacion: "Facturación",
+};
+
+/** Horas hábiles para la primera respuesta, por prioridad (Fase de soporte, SLA). */
+export const SLA_HOURS_BY_PRIORITY: Record<TicketPriority, number> = {
+  urgent: 2,
+  high: 8,
+  medium: 24,
+  low: 48,
 };
 
 export const TECH_ASSET_TYPE_LABELS: Record<TechAssetType, string> = {
@@ -429,6 +569,7 @@ export interface Task {
   created_by: string;
   created_at: string;
   updated_at: string;
+  ticket_id: string | null;
 }
 
 export interface Reminder {
@@ -446,6 +587,11 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   marketing: "Marketing",
   marketing_admin: "Marketing (admin)",
   client: "Cliente (portal)",
+};
+
+export const CLIENT_PORTAL_ROLE_LABELS: Record<ClientPortalRole, string> = {
+  owner: "Titular",
+  member: "Miembro",
 };
 
 export const CLIENT_STATUS_LABELS: Record<ClientStatus, string> = {

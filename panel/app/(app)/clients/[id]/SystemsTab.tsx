@@ -12,24 +12,18 @@ import { formatDate } from "@/lib/utils/dates";
 import {
   PROJECT_STATUS_LABELS,
   TECH_ASSET_TYPE_LABELS,
-  TICKET_PRIORITY_LABELS,
-  TICKET_STATUS_LABELS,
   type GhlBot,
   type Profile,
   type Project,
   type ProjectMilestone,
   type ProjectStatus,
-  type SupportTicket,
   type TechAsset,
-  type TechAssetType,
-  type TicketStatus,
 } from "@/lib/types/domain";
 import {
   addMilestone,
   createGhlBot,
   createProject,
   createTechAsset,
-  createTicket,
   deleteGhlBot,
   deleteMilestone,
   deleteProject,
@@ -37,7 +31,6 @@ import {
   toggleGhlBotActive,
   toggleMilestone,
   updateProjectStatus,
-  updateTicketStatus,
   type ActionState,
 } from "./projectsActions";
 
@@ -253,103 +246,6 @@ function ProjectsCard({
   );
 }
 
-function TicketsCard({ clientId, tickets }: { clientId: string; tickets: SupportTicket[] }) {
-  const [showForm, setShowForm] = useState(false);
-  const [state, formAction] = useFormState<ActionState, FormData>(createTicket, {});
-  const open = tickets.filter((t) => t.status === "open" || t.status === "in_progress");
-  const closed = tickets.filter((t) => t.status === "resolved" || t.status === "closed");
-
-  return (
-    <Card>
-      <div className="flex items-center justify-between">
-        <CardTitle>Tickets de soporte</CardTitle>
-        <Button variant="secondary" onClick={() => setShowForm((v) => !v)}>
-          <Plus size={16} />
-          {showForm ? "Cerrar" : "Nuevo ticket"}
-        </Button>
-      </div>
-
-      {showForm && (
-        <form action={formAction} className="mt-4 grid gap-4 rounded-lg border border-border bg-surface-hover p-4 sm:grid-cols-2">
-          <input type="hidden" name="client_id" value={clientId} />
-          <Input label="Título" name="title" required />
-          <Select label="Prioridad" name="priority" defaultValue="medium">
-            {(Object.entries(TICKET_PRIORITY_LABELS) as [string, string][]).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </Select>
-          <div className="sm:col-span-2">
-            <Textarea label="Descripción" name="description" rows={2} />
-          </div>
-          {state.error && <p className="text-sm text-danger sm:col-span-2">{state.error}</p>}
-          <div className="sm:col-span-2">
-            <SubmitButton label="Crear ticket" pendingLabel="Creando…" />
-          </div>
-        </form>
-      )}
-
-      {open.length === 0 ? (
-        <p className="mt-3 text-sm text-text-muted">Sin tickets abiertos.</p>
-      ) : (
-        <ul className="mt-3 divide-y divide-border">
-          {open.map((t) => (
-            <li key={t.id} className="flex items-center justify-between gap-3 py-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-text-primary">{t.title}</p>
-                  <Badge tone={t.priority === "urgent" || t.priority === "high" ? "danger" : "neutral"}>
-                    {TICKET_PRIORITY_LABELS[t.priority]}
-                  </Badge>
-                </div>
-                {t.description && <p className="mt-0.5 text-xs text-text-muted">{t.description}</p>}
-              </div>
-              <form
-                action={(fd) => {
-                  fd.set("client_id", clientId);
-                  updateTicketStatus(fd);
-                }}
-              >
-                <input type="hidden" name="id" value={t.id} />
-                <select
-                  name="status"
-                  defaultValue={t.status}
-                  onChange={(e) => e.currentTarget.form?.requestSubmit()}
-                  className="rounded-lg border border-border bg-surface px-2 py-1 text-xs text-text-primary"
-                >
-                  {(Object.entries(TICKET_STATUS_LABELS) as [TicketStatus, string][]).map(
-                    ([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    )
-                  )}
-                </select>
-              </form>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {closed.length > 0 && (
-        <details className="mt-4">
-          <summary className="cursor-pointer text-xs text-text-muted">
-            {closed.length} ticket{closed.length === 1 ? "" : "s"} cerrado{closed.length === 1 ? "" : "s"}
-          </summary>
-          <ul className="mt-2 divide-y divide-border">
-            {closed.map((t) => (
-              <li key={t.id} className="py-2 text-sm text-text-muted">
-                {t.title}
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
-    </Card>
-  );
-}
-
 function TechAssetsCard({ clientId, assets }: { clientId: string; assets: TechAsset[] }) {
   const [showForm, setShowForm] = useState(false);
   const [state, formAction] = useFormState<ActionState, FormData>(createTechAsset, {});
@@ -510,7 +406,6 @@ export function SystemsTab({
   clientId,
   projects,
   milestonesByProject,
-  tickets,
   techAssets,
   ghlBots,
   assignable,
@@ -518,7 +413,6 @@ export function SystemsTab({
   clientId: string;
   projects: Project[];
   milestonesByProject: Map<string, ProjectMilestone[]>;
-  tickets: SupportTicket[];
   techAssets: TechAsset[];
   ghlBots: GhlBot[];
   assignable: Pick<Profile, "id" | "full_name" | "role">[];
@@ -531,10 +425,7 @@ export function SystemsTab({
         milestonesByProject={milestonesByProject}
         assignable={assignable}
       />
-      <div className="grid gap-5 lg:grid-cols-2">
-        <TicketsCard clientId={clientId} tickets={tickets} />
-        <TechAssetsCard clientId={clientId} assets={techAssets} />
-      </div>
+      <TechAssetsCard clientId={clientId} assets={techAssets} />
       <GhlBotsCard clientId={clientId} bots={ghlBots} />
     </div>
   );

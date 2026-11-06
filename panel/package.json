@@ -12,6 +12,8 @@
     "migrate": "node scripts/migrate.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1163.0",
+    "@aws-sdk/s3-request-presigner": "^3.1163.0",
     "@radix-ui/react-dialog": "^1.1.1",
     "@sentry/nextjs": "^11",
     "bcryptjs": "^2.4.3",
@@ -29,7 +31,8 @@
     "react-dom": "^18",
     "recharts": "^2.12.7",
     "server-only": "^0.0.1",
-    "tailwind-merge": "^2.5.2"
+    "tailwind-merge": "^2.5.2",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

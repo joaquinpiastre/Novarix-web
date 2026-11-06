@@ -1,10 +1,17 @@
 "use server";
 
-import { randomBytes } from "crypto";
+import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { query, queryOne } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/requirePermission";
-import { hashPassword } from "@/lib/auth/session";
+import { getSessionProfile } from "@/lib/auth/getSessionProfile";
+import { deleteOtherSessionsForUser } from "@/lib/auth/session";
+import { createSignedToken } from "@/lib/auth/signedToken";
+import { ADMIN_PREVIEW_COOKIE, ADMIN_PREVIEW_TTL_MS } from "@/lib/auth/requireClient";
+import { createClientInvite, inviteEmailHtml } from "@/lib/auth/clientInvite";
+import { sendEmail } from "@/lib/notifications/email";
 import { recordAudit } from "@/lib/audit/log";
 import { getClientIp } from "@/lib/utils/request";
 import type { ClientStatus } from "@/lib/types/domain";
@@ -253,66 +260,131 @@ export async function removeTeamMember(formData: FormData): Promise<void> {
 
 // ===== Usuarios del portal =====
 
-export interface CreatePortalUserState extends ActionState {
-  created?: { email: string; tempPassword: string; fullName: string };
+const inviteSchema = z.object({
+  client_id: z.string().uuid(),
+  email: z.string().trim().toLowerCase().email(),
+  client_role: z.enum(["owner", "member"]),
+});
+
+export interface InviteClientUserState extends ActionState {
+  sent?: { email: string };
 }
 
-export async function createPortalUser(
-  _prevState: CreatePortalUserState,
+/** Alta por invitación: link firmado de un solo uso (72hs) por email, en vez de contraseña temporal en pantalla. */
+export async function inviteClientUser(
+  _prevState: InviteClientUserState,
   formData: FormData
-): Promise<CreatePortalUserState> {
+): Promise<InviteClientUserState> {
   const { userId: actorId } = await requirePermission("clients.manage");
 
-  const client_id = String(formData.get("client_id") ?? "");
-  const full_name = String(formData.get("full_name") ?? "").trim();
-  const email = String(formData.get("email") ?? "")
-    .trim()
-    .toLowerCase();
-  if (!client_id || !full_name || !email) {
-    return { error: "Completá nombre y email." };
-  }
+  const parsed = inviteSchema.safeParse({
+    client_id: formData.get("client_id"),
+    email: formData.get("email"),
+    client_role: formData.get("client_role") || "member",
+  });
+  if (!parsed.success) return { error: "Revisá los datos de la invitación." };
+  const { client_id, email, client_role } = parsed.data;
 
-  const tempPassword = randomBytes(9).toString("base64url");
+  const existing = await queryOne("select 1 from profiles where email = $1", [email]);
+  if (existing) return { error: "Ya existe un usuario con ese email." };
 
-  try {
-    await query(
-      `insert into profiles (email, password_hash, full_name, role, client_id, must_change_password)
-       values ($1, $2, $3, 'client', $4, true)`,
-      [email, hashPassword(tempPassword), full_name, client_id]
-    );
-  } catch (err) {
-    const isDuplicateEmail = (err as { code?: string }).code === "23505";
-    return { error: isDuplicateEmail ? "Ya existe un usuario con ese email." : "No se pudo crear el acceso." };
-  }
+  const client = await queryOne<{ name: string }>("select name from clients where id = $1", [client_id]);
+  if (!client) return { error: "Cliente no encontrado." };
+
+  const { token } = await createClientInvite(client_id, email, client_role, actorId);
+  const inviteUrl = `https://panel.novarix.agency/portal/accept-invite?token=${token}`;
+  await sendEmail(email, "Invitación al portal de Novarix", inviteEmailHtml(client.name, inviteUrl));
 
   await recordAudit({
     actorId,
-    action: "portal_users.create",
+    action: "client_invites.create",
     entityType: "client",
     entityId: client_id,
-    after: { email, full_name },
+    after: { email, client_role },
     ip: getClientIp(),
   });
 
   revalidatePath(`/clients/${client_id}`);
-  return { created: { email, tempPassword, fullName: full_name } };
+  return { sent: { email } };
 }
 
-export async function removePortalUser(formData: FormData): Promise<void> {
+export async function cancelInvite(formData: FormData): Promise<void> {
   const { userId: actorId } = await requirePermission("clients.manage");
   const id = String(formData.get("id") ?? "");
   const client_id = String(formData.get("client_id") ?? "");
   if (!id) return;
 
-  await query("delete from profiles where id = $1 and role = 'client'", [id]);
+  await query("delete from client_invites where id = $1 and accepted_at is null", [id]);
+  await recordAudit({
+    actorId,
+    action: "client_invites.cancel",
+    entityType: "client_invite",
+    entityId: id,
+    ip: getClientIp(),
+  });
+  if (client_id) revalidatePath(`/clients/${client_id}`);
+}
+
+/** El owner también puede desactivar compañeros; admin/marketing_admin a cualquiera. Nunca borra el perfil. */
+export async function setClientUserActive(formData: FormData): Promise<void> {
+  const { userId: actorId } = await requirePermission("clients.manage");
+  const id = String(formData.get("id") ?? "");
+  const client_id = String(formData.get("client_id") ?? "");
+  const active = formData.get("active") === "true";
+  if (!id) return;
+
+  const row = await queryOne<{ profile_id: string }>(
+    "update client_users set active = $1 where id = $2 returning profile_id",
+    [active, id]
+  );
+  if (row && !active) await deleteOtherSessionsForUser(row.profile_id);
 
   await recordAudit({
     actorId,
-    action: "portal_users.remove",
+    action: "client_users.set_active",
+    entityType: "client_user",
+    entityId: id,
+    after: { active },
+    ip: getClientIp(),
+  });
+
+  if (client_id) revalidatePath(`/clients/${client_id}`);
+}
+
+/** "Ver como cliente": modo de solo lectura para admin/marketing_admin, registrado en audit log en cada acceso (ver requireClient()). */
+export async function startClientPreview(formData: FormData): Promise<void> {
+  const { userId } = await requirePermission("clients.manage");
+  const client_id = String(formData.get("client_id") ?? "");
+  if (!client_id) return;
+
+  const token = createSignedToken(`${userId}:${client_id}`, ADMIN_PREVIEW_TTL_MS);
+  cookies().set(ADMIN_PREVIEW_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: ADMIN_PREVIEW_TTL_MS / 1000,
+  });
+
+  await recordAudit({
+    actorId: userId,
+    action: "portal.admin_preview_start",
     entityType: "client",
     entityId: client_id,
     ip: getClientIp(),
   });
 
-  if (client_id) revalidatePath(`/clients/${client_id}`);
+  redirect("/portal");
+}
+
+export async function stopClientPreview(): Promise<void> {
+  const { userId } = await getSessionProfile();
+  cookies().delete(ADMIN_PREVIEW_COOKIE);
+  await recordAudit({
+    actorId: userId,
+    action: "portal.admin_preview_stop",
+    entityType: "client",
+    ip: getClientIp(),
+  });
+  redirect("/dashboard");
 }

@@ -24,7 +24,8 @@ export type Permission =
   | "users.create_marketing"
   | "audit_log.view"
   | "marketing.view_all"
-  | "systems.manage";
+  | "systems.manage"
+  | "tickets.manage_all";
 
 // Lista explícita de todos los permisos que existen. Se usa en los tests
 // para verificar que ninguno quede sin un caso que lo ejercite (ver
@@ -46,6 +47,7 @@ export const ALL_PERMISSIONS: Permission[] = [
   "audit_log.view",
   "marketing.view_all",
   "systems.manage",
+  "tickets.manage_all",
 ];
 
 const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
@@ -65,6 +67,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "audit_log.view",
     "marketing.view_all",
     "systems.manage",
+    "tickets.manage_all",
   ],
   // Ve y gestiona clientes/servicios/equipo y metricas de marketing de TODOS
   // los clientes, pero no sueldos, no cobros de software, no gestion de
@@ -75,14 +78,16 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "client_team.manage",
     "users.create_marketing",
     "marketing.view_all",
+    "tickets.manage_all",
   ],
-  // Gestiona proyectos, tickets de soporte y activos tecnicos de todos los
-  // clientes (dominio/hosting/SSL, bots de GHL) -- es el area tecnica, no
-  // tiene nada que ver con marketing/finanzas.
+  // Gestiona proyectos y activos tecnicos de todos los clientes
+  // (dominio/hosting/SSL, bots de GHL) -- es el area tecnica. Los tickets
+  // los ve igual que marketing: solo los de sus clientes asignados (ver
+  // scopeTicketsFor), por eso no tiene tickets.manage_all.
   programmer: ["systems.manage"],
   marketing: [],
   // No tiene ningun permiso interno -- su acceso es exclusivamente al
-  // portal (/portal), gateado por requirePortalAccess(), no por esta matriz.
+  // portal (/portal), gateado por requireClient(), no por esta matriz.
   client: [],
 };
 
@@ -123,4 +128,8 @@ export function scopeTasksFor(profile: Profile): Scope {
 
 export function scopeClientsFor(profile: Profile): Scope {
   return { all: can(profile, "clients.manage") };
+}
+
+export function scopeTicketsFor(profile: Profile): Scope {
+  return { all: can(profile, "tickets.manage_all") };
 }
