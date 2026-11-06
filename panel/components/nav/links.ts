@@ -11,6 +11,7 @@ import {
   Building2,
   TrendingUp,
   Wrench,
+  PiggyBank,
   type LucideIcon,
 } from "lucide-react";
 
@@ -60,6 +61,12 @@ export const NAV_LINKS: NavLink[] = [
     href: "/payments/in",
     label: "Cobros a clientes",
     icon: ArrowUpCircle,
+    permission: "payments_in.manage",
+  },
+  {
+    href: "/finance",
+    label: "Finanzas",
+    icon: PiggyBank,
     permission: "payments_in.manage",
   },
   {

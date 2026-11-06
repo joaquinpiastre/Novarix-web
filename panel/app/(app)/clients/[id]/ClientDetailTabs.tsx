@@ -43,6 +43,11 @@ import {
   type CreatePortalUserState,
   type UpdateClientState,
 } from "../actions";
+import {
+  updateDirectCosts,
+  updateTeamCostAllocation,
+  type ActionState as FinanceActionState,
+} from "./financeActions";
 import type {
   AgreementRow,
   ClientServiceRow,
@@ -414,9 +419,125 @@ function EquipoTab({
   );
 }
 
-function FinanzasTab({ agreements, payments }: { agreements: AgreementRow[]; payments: PaymentHistoryRow[] }) {
+function RentabilidadCard({
+  client,
+  team,
+  mrr,
+}: {
+  client: Client;
+  team: ClientTeamRow[];
+  mrr: number;
+}) {
+  const [costsState, costsAction] = useFormState<FinanceActionState, FormData>(updateDirectCosts, {});
+  const teamCost = team.reduce((sum, t) => sum + (t.monthly_cost_allocation ?? 0), 0);
+  const directCosts = client.monthly_direct_costs ?? 0;
+  const margin = mrr - teamCost - directCosts;
+  const marginPct = mrr > 0 ? (margin / mrr) * 100 : null;
+
+  return (
+    <Card>
+      <CardTitle>Rentabilidad</CardTitle>
+      <p className="mt-1 text-xs text-text-muted">
+        Costos cargados a mano por un admin -- todavía no hay time-tracking real.
+      </p>
+
+      <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div>
+          <dt className="text-xs font-semibold uppercase tracking-wider text-text-muted">Ingresos (MRR)</dt>
+          <dd className="mt-0.5 text-sm text-text-primary">{formatCurrency(mrr)}</dd>
+        </div>
+        <div>
+          <dt className="text-xs font-semibold uppercase tracking-wider text-text-muted">Costo de equipo</dt>
+          <dd className="mt-0.5 text-sm text-text-primary">{formatCurrency(teamCost)}</dd>
+        </div>
+        <div>
+          <dt className="text-xs font-semibold uppercase tracking-wider text-text-muted">Costos directos</dt>
+          <dd className="mt-0.5 text-sm text-text-primary">{formatCurrency(directCosts)}</dd>
+        </div>
+        <div>
+          <dt className="text-xs font-semibold uppercase tracking-wider text-text-muted">Margen</dt>
+          <dd className="mt-0.5 flex items-center gap-2 text-sm font-medium text-text-primary">
+            {formatCurrency(margin)}
+            {marginPct != null && (
+              <Badge tone={margin < 0 ? "danger" : margin / mrr < 0.2 ? "warning" : "success"}>
+                {marginPct.toFixed(0)}%
+              </Badge>
+            )}
+          </dd>
+        </div>
+      </dl>
+
+      <form action={costsAction} className="mt-4 flex items-end gap-3 border-t border-border pt-4">
+        <input type="hidden" name="client_id" value={client.id} />
+        <Input
+          label="Costos directos mensuales"
+          name="monthly_direct_costs"
+          type="number"
+          min={0}
+          step="0.01"
+          defaultValue={client.monthly_direct_costs ?? ""}
+          className="max-w-[200px]"
+        />
+        <Button type="submit" variant="secondary">
+          Guardar
+        </Button>
+      </form>
+      {costsState.error && <p className="mt-2 text-sm text-danger">{costsState.error}</p>}
+
+      {team.length > 0 && (
+        <div className="mt-4 border-t border-border pt-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+            Costo asignado por persona
+          </p>
+          <ul className="mt-2 divide-y divide-border">
+            {team.map((t) => (
+              <li key={t.id} className="flex items-center justify-between gap-3 py-2">
+                <span className="text-sm text-text-primary">{t.full_name}</span>
+                <form
+                  action={(fd) => {
+                    fd.set("client_id", client.id);
+                    updateTeamCostAllocation(fd);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <input type="hidden" name="id" value={t.id} />
+                  <input
+                    type="number"
+                    name="monthly_cost_allocation"
+                    min={0}
+                    step="0.01"
+                    defaultValue={t.monthly_cost_allocation ?? ""}
+                    placeholder="0"
+                    className="w-28 rounded-lg border border-border bg-surface px-2 py-1 text-sm text-text-primary"
+                  />
+                  <button type="submit" className="text-xs text-accent hover:underline">
+                    Guardar
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function FinanzasTab({
+  client,
+  team,
+  agreements,
+  payments,
+}: {
+  client: Client;
+  team: ClientTeamRow[];
+  agreements: AgreementRow[];
+  payments: PaymentHistoryRow[];
+}) {
+  const mrr = agreements.filter((a) => a.active).reduce((sum, a) => sum + a.amount, 0);
   return (
     <div className="flex flex-col gap-5">
+      <RentabilidadCard client={client} team={team} mrr={mrr} />
       <Card>
         <div className="flex items-center justify-between">
           <CardTitle>Acuerdos recurrentes</CardTitle>
@@ -609,7 +730,7 @@ export function ClientDetailTabs({
     tabs.push({
       id: "finanzas",
       label: "Finanzas",
-      content: <FinanzasTab agreements={agreements} payments={payments} />,
+      content: <FinanzasTab client={client} team={team} agreements={agreements} payments={payments} />,
     });
   }
 

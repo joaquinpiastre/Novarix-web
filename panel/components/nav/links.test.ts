@@ -28,6 +28,7 @@ describe("navLinksFor", () => {
       "/systems",
       "/payments/out",
       "/payments/in",
+      "/finance",
       "/tasks",
       "/reminders",
       "/admin/users",

@@ -32,6 +32,8 @@ export interface Client {
   primary_contact_email: string | null;
   status: ClientStatus;
   account_owner_id: string | null;
+  /** Estimacion mensual cargada a mano por un admin -- no hay tracking real de gastos todavia. */
+  monthly_direct_costs: number | null;
 }
 
 export interface ServiceCatalogItem {
@@ -61,6 +63,8 @@ export interface ClientTeamMember {
   profile_id: string;
   role_on_account: string;
   created_at: string;
+  /** Estimacion mensual cargada a mano por un admin -- no hay time-tracking real todavia. */
+  monthly_cost_allocation: number | null;
 }
 
 export type MarketingPlanStatus = "draft" | "approved" | "active" | "closed";
