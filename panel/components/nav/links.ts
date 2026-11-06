@@ -8,6 +8,7 @@ import {
   Bell,
   Users,
   Settings,
+  Building2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -15,8 +16,8 @@ export interface NavLink {
   href: string;
   label: string;
   icon: LucideIcon;
-  /** null = visible para cualquier perfil autenticado. */
-  permission: Permission | null;
+  /** null = visible para cualquier perfil autenticado; un array = alcanza con tener cualquiera de esos permisos. */
+  permission: Permission | Permission[] | null;
 }
 
 export const NAV_LINKS: NavLink[] = [
@@ -25,6 +26,12 @@ export const NAV_LINKS: NavLink[] = [
     label: "Resumen",
     icon: LayoutDashboard,
     permission: null,
+  },
+  {
+    href: "/clients",
+    label: "Clientes",
+    icon: Building2,
+    permission: "clients.manage",
   },
   {
     href: "/payments/out",
@@ -54,7 +61,7 @@ export const NAV_LINKS: NavLink[] = [
     href: "/admin/users",
     label: "Usuarios",
     icon: Users,
-    permission: "users.manage",
+    permission: ["users.manage", "users.create_marketing"],
   },
   {
     href: "/account",
@@ -64,6 +71,12 @@ export const NAV_LINKS: NavLink[] = [
   },
 ];
 
+function hasAccess(profile: Profile, permission: NavLink["permission"]): boolean {
+  if (permission === null) return true;
+  if (Array.isArray(permission)) return permission.some((p) => can(profile, p));
+  return can(profile, permission);
+}
+
 export function navLinksFor(profile: Profile): NavLink[] {
-  return NAV_LINKS.filter((link) => link.permission === null || can(profile, link.permission));
+  return NAV_LINKS.filter((link) => hasAccess(profile, link.permission));
 }

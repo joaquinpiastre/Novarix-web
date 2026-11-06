@@ -4,6 +4,8 @@ import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { query } from "@/lib/db";
+import { getSessionProfile } from "@/lib/auth/getSessionProfile";
+import { can } from "@/lib/auth/permissions";
 import { requirePermission } from "@/lib/auth/requirePermission";
 import { hashPassword, deleteOtherSessionsForUser, SESSION_COOKIE } from "@/lib/auth/session";
 import { recordAudit } from "@/lib/audit/log";
@@ -23,7 +25,12 @@ export async function createCollaboratorAction(
   _prevState: CreateUserState,
   formData: FormData
 ): Promise<CreateUserState> {
-  const { userId: actorId } = await requirePermission("users.manage");
+  const { userId: actorId, profile } = await getSessionProfile();
+  const isFullAdmin = can(profile, "users.manage");
+  const canCreateMarketing = can(profile, "users.create_marketing");
+  if (!isFullAdmin && !canCreateMarketing) {
+    return { error: "No tenés permiso para crear usuarios." };
+  }
 
   const full_name = String(formData.get("full_name") ?? "").trim();
   const email = String(formData.get("email") ?? "")
@@ -31,7 +38,11 @@ export async function createCollaboratorAction(
     .toLowerCase();
   const role = String(formData.get("role") ?? "") as UserRole;
 
-  if (!full_name || !email || (role !== "programmer" && role !== "marketing")) {
+  const allowedRoles: UserRole[] = isFullAdmin
+    ? ["programmer", "marketing", "marketing_admin"]
+    : ["marketing"];
+
+  if (!full_name || !email || !allowedRoles.includes(role)) {
     return { error: "Completá nombre, email y rol." };
   }
 

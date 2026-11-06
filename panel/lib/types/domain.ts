@@ -1,6 +1,7 @@
-export type UserRole = "admin" | "programmer" | "marketing";
+export type UserRole = "admin" | "programmer" | "marketing" | "marketing_admin";
 export type TaskStatus = "pending" | "in_progress" | "done";
 export type PaymentOutType = "salary" | "bonus" | "other";
+export type ClientStatus = "prospecto" | "activo" | "pausado" | "baja";
 
 export interface Profile {
   id: string;
@@ -16,6 +17,47 @@ export interface Client {
   id: string;
   name: string;
   notes: string | null;
+  created_at: string;
+  legal_name: string | null;
+  tax_id: string | null;
+  industry: string | null;
+  city: string | null;
+  logo_url: string | null;
+  website: string | null;
+  social_links: Record<string, string> | null;
+  primary_contact_name: string | null;
+  primary_contact_phone: string | null;
+  primary_contact_email: string | null;
+  status: ClientStatus;
+  account_owner_id: string | null;
+}
+
+export interface ServiceCatalogItem {
+  id: string;
+  name: string;
+  category: string;
+  active: boolean;
+  created_at: string;
+}
+
+export interface ClientService {
+  id: string;
+  client_id: string;
+  service_id: string;
+  started_at: string;
+  ended_at: string | null;
+  fee: number | null;
+  status: string;
+  recurring_agreement_id: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface ClientTeamMember {
+  id: string;
+  client_id: string;
+  profile_id: string;
+  role_on_account: string;
   created_at: string;
 }
 
@@ -78,6 +120,14 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   admin: "Administrador",
   programmer: "Programador",
   marketing: "Marketing",
+  marketing_admin: "Marketing (admin)",
+};
+
+export const CLIENT_STATUS_LABELS: Record<ClientStatus, string> = {
+  prospecto: "Prospecto",
+  activo: "Activo",
+  pausado: "Pausado",
+  baja: "Baja",
 };
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {

@@ -19,9 +19,10 @@ function hrefs(profileArg: Profile): string[] {
 }
 
 describe("navLinksFor", () => {
-  it("admin ve los 6 módulos + Mi cuenta", () => {
+  it("admin ve todos los módulos", () => {
     expect(hrefs(profile("admin"))).toEqual([
       "/dashboard",
+      "/clients",
       "/payments/out",
       "/payments/in",
       "/tasks",
@@ -31,7 +32,7 @@ describe("navLinksFor", () => {
     ]);
   });
 
-  it("programmer solo ve lo que no requiere permiso admin-only + Mi cuenta", () => {
+  it("programmer solo ve lo que no requiere permiso admin-only", () => {
     expect(hrefs(profile("programmer"))).toEqual([
       "/dashboard",
       "/payments/out",
@@ -45,6 +46,17 @@ describe("navLinksFor", () => {
       "/dashboard",
       "/payments/out",
       "/tasks",
+      "/account",
+    ]);
+  });
+
+  it("marketing_admin ve clientes y usuarios (para altas de marketing), no cobros/pagos", () => {
+    expect(hrefs(profile("marketing_admin"))).toEqual([
+      "/dashboard",
+      "/clients",
+      "/payments/out",
+      "/tasks",
+      "/admin/users",
       "/account",
     ]);
   });

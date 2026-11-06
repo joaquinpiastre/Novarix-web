@@ -21,3 +21,12 @@ export async function requirePermission(
   if (!can(session.profile, permission)) redirect("/dashboard");
   return session;
 }
+
+/** Igual que requirePermission(), pero alcanza con tener cualquiera de los permisos listados. */
+export async function requireAnyPermission(
+  permissions: Permission[]
+): Promise<{ userId: string; profile: Profile }> {
+  const session = await getSessionProfile();
+  if (!permissions.some((p) => can(session.profile, p))) redirect("/dashboard");
+  return session;
+}

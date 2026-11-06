@@ -14,12 +14,16 @@ export type Permission =
   | "payments_out.view_all"
   | "payments_out.manage"
   | "clients.manage"
+  | "client_services.manage"
+  | "client_team.manage"
   | "payments_in.manage"
   | "tasks.manage"
   | "tasks.update_status"
   | "reminders.manage"
   | "users.manage"
-  | "audit_log.view";
+  | "users.create_marketing"
+  | "audit_log.view"
+  | "marketing.view_all";
 
 // Lista explícita de todos los permisos que existen. Se usa en los tests
 // para verificar que ninguno quede sin un caso que lo ejercite (ver
@@ -30,12 +34,16 @@ export const ALL_PERMISSIONS: Permission[] = [
   "payments_out.view_all",
   "payments_out.manage",
   "clients.manage",
+  "client_services.manage",
+  "client_team.manage",
   "payments_in.manage",
   "tasks.manage",
   "tasks.update_status",
   "reminders.manage",
   "users.manage",
+  "users.create_marketing",
   "audit_log.view",
+  "marketing.view_all",
 ];
 
 const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
@@ -44,12 +52,26 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "payments_out.view_all",
     "payments_out.manage",
     "clients.manage",
+    "client_services.manage",
+    "client_team.manage",
     "payments_in.manage",
     "tasks.manage",
     "tasks.update_status",
     "reminders.manage",
     "users.manage",
+    "users.create_marketing",
     "audit_log.view",
+    "marketing.view_all",
+  ],
+  // Ve y gestiona clientes/servicios/equipo y metricas de marketing de TODOS
+  // los clientes, pero no sueldos, no cobros de software, no gestion de
+  // usuarios en general (solo puede dar de alta cuentas de rol `marketing`).
+  marketing_admin: [
+    "clients.manage",
+    "client_services.manage",
+    "client_team.manage",
+    "users.create_marketing",
+    "marketing.view_all",
   ],
   programmer: [],
   marketing: [],

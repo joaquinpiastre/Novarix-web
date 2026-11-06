@@ -24,32 +24,37 @@ function profile(role: UserRole, id = "user-1"): Profile {
 const admin = profile("admin", "admin-1");
 const programmer = profile("programmer", "prog-1");
 const marketing = profile("marketing", "mkt-1");
+const marketingAdmin = profile("marketing_admin", "mktadmin-1");
+
+type Row = { admin: boolean; programmer: boolean; marketing: boolean; marketing_admin: boolean };
 
 // Matriz exhaustiva: una fila por permiso, con el resultado esperado para
 // cada rol (sin resource). Si se agrega un Permission nuevo a ALL_PERMISSIONS
 // sin agregar su fila acá, el test de "cobertura" de más abajo falla.
-const MATRIX: Record<Permission, { admin: boolean; programmer: boolean; marketing: boolean }> = {
-  "dashboard.view_all": { admin: true, programmer: false, marketing: false },
-  "payments_out.view_all": { admin: true, programmer: false, marketing: false },
-  "payments_out.manage": { admin: true, programmer: false, marketing: false },
-  "clients.manage": { admin: true, programmer: false, marketing: false },
-  "payments_in.manage": { admin: true, programmer: false, marketing: false },
-  "tasks.manage": { admin: true, programmer: false, marketing: false },
-  "tasks.update_status": { admin: true, programmer: false, marketing: false },
-  "reminders.manage": { admin: true, programmer: false, marketing: false },
-  "users.manage": { admin: true, programmer: false, marketing: false },
-  "audit_log.view": { admin: true, programmer: false, marketing: false },
+const MATRIX: Record<Permission, Row> = {
+  "dashboard.view_all": { admin: true, programmer: false, marketing: false, marketing_admin: false },
+  "payments_out.view_all": { admin: true, programmer: false, marketing: false, marketing_admin: false },
+  "payments_out.manage": { admin: true, programmer: false, marketing: false, marketing_admin: false },
+  "clients.manage": { admin: true, programmer: false, marketing: false, marketing_admin: true },
+  "client_services.manage": { admin: true, programmer: false, marketing: false, marketing_admin: true },
+  "client_team.manage": { admin: true, programmer: false, marketing: false, marketing_admin: true },
+  "payments_in.manage": { admin: true, programmer: false, marketing: false, marketing_admin: false },
+  "tasks.manage": { admin: true, programmer: false, marketing: false, marketing_admin: false },
+  "tasks.update_status": { admin: true, programmer: false, marketing: false, marketing_admin: false },
+  "reminders.manage": { admin: true, programmer: false, marketing: false, marketing_admin: false },
+  "users.manage": { admin: true, programmer: false, marketing: false, marketing_admin: false },
+  "users.create_marketing": { admin: true, programmer: false, marketing: false, marketing_admin: true },
+  "audit_log.view": { admin: true, programmer: false, marketing: false, marketing_admin: false },
+  "marketing.view_all": { admin: true, programmer: false, marketing: false, marketing_admin: true },
 };
 
 describe("can() — matriz rol x permiso (sin resource)", () => {
-  for (const [permission, expected] of Object.entries(MATRIX) as [
-    Permission,
-    (typeof MATRIX)[Permission],
-  ][]) {
+  for (const [permission, expected] of Object.entries(MATRIX) as [Permission, Row][]) {
     it(`${permission}`, () => {
       expect(can(admin, permission)).toBe(expected.admin);
       expect(can(programmer, permission)).toBe(expected.programmer);
       expect(can(marketing, permission)).toBe(expected.marketing);
+      expect(can(marketingAdmin, permission)).toBe(expected.marketing_admin);
     });
   }
 });
@@ -92,8 +97,10 @@ describe("helpers de scope", () => {
     expect(scopeTasksFor(programmer).all).toBe(false);
   });
 
-  it("scopeClientsFor: all=true solo para admin", () => {
+  it("scopeClientsFor: all=true para admin y marketing_admin", () => {
     expect(scopeClientsFor(admin).all).toBe(true);
+    expect(scopeClientsFor(marketingAdmin).all).toBe(true);
     expect(scopeClientsFor(marketing).all).toBe(false);
+    expect(scopeClientsFor(programmer).all).toBe(false);
   });
 });

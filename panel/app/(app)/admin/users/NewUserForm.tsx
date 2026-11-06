@@ -16,7 +16,7 @@ function SubmitButton() {
   );
 }
 
-export function NewUserForm() {
+export function NewUserForm({ isFullAdmin }: { isFullAdmin: boolean }) {
   const [state, formAction] = useFormState<CreateUserState, FormData>(createCollaboratorAction, {});
 
   return (
@@ -25,12 +25,15 @@ export function NewUserForm() {
       <form action={formAction} className="mt-4 grid gap-4 sm:grid-cols-3">
         <Input label="Nombre completo" name="full_name" required />
         <Input label="Email" name="email" type="email" required />
-        <Select label="Rol" name="role" required defaultValue="">
-          <option value="" disabled>
-            Elegí un rol
-          </option>
-          <option value="programmer">Programador</option>
+        <Select label="Rol" name="role" required defaultValue={isFullAdmin ? "" : "marketing"}>
+          {isFullAdmin && (
+            <option value="" disabled>
+              Elegí un rol
+            </option>
+          )}
+          {isFullAdmin && <option value="programmer">Programador</option>}
           <option value="marketing">Marketing</option>
+          {isFullAdmin && <option value="marketing_admin">Marketing (admin)</option>}
         </Select>
         {state.error && <p className="text-sm text-danger sm:col-span-3">{state.error}</p>}
         <div className="sm:col-span-3">
