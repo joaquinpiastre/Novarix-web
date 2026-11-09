@@ -94,7 +94,7 @@ export default async function TicketsInboxPage({
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-text-primary">Tickets</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Tickets</h1>
           <p className="text-sm text-text-muted">
             {scope.all ? "Todos los clientes." : "Solo tus clientes asignados."}
           </p>

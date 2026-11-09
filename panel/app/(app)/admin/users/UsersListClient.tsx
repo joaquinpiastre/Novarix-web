@@ -28,7 +28,7 @@ function ChangePasswordForm({ userId, onDone }: { userId: string; onDone: () => 
   return (
     <form
       action={formAction}
-      className="mt-3 flex flex-col gap-3 rounded-lg border border-border bg-surface-hover p-4 sm:flex-row sm:items-end"
+      className="mt-3 flex flex-col gap-3 rounded-xl border border-border bg-surface-hover p-4 sm:flex-row sm:items-end"
     >
       <input type="hidden" name="user_id" value={userId} />
       <div className="flex-1">

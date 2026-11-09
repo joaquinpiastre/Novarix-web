@@ -46,7 +46,7 @@ function ChartTooltip({ active, payload }: any) {
   if (!active || !payload?.length) return null;
   const point = payload[0].payload as MonthlyIncomePoint;
   return (
-    <div className="rounded-lg border border-border bg-surface px-3 py-2 text-sm shadow-lg">
+    <div className="rounded-xl border border-border bg-surface px-3 py-2 text-sm shadow-lg">
       <p className="text-text-muted">{formatShortMonthLabel(point.month)}</p>
       <p className="font-semibold text-text-primary">{formatCurrency(point.total)}</p>
     </div>
@@ -69,7 +69,7 @@ export function AdminDashboard({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold text-text-primary">Resumen del negocio</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Resumen del negocio</h1>
         <p className="text-sm text-text-muted">Ingresos, gastos y cobros pendientes.</p>
       </div>
 

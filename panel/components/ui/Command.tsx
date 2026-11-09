@@ -70,7 +70,7 @@ export function CommandItem({
   return (
     <CommandPrimitive.Item
       className={cn(
-        "relative flex cursor-pointer select-none items-center gap-2 rounded-lg px-2 py-2 text-sm text-text-primary outline-none aria-selected:bg-surface-hover aria-selected:text-accent",
+        "relative flex cursor-pointer select-none items-center gap-2 rounded-xl px-2 py-2 text-sm text-text-primary outline-none aria-selected:bg-surface-hover aria-selected:text-accent",
         className
       )}
       {...props}

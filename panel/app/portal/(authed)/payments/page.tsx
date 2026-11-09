@@ -18,7 +18,7 @@ export default async function PortalPaymentsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold text-text-primary">Facturación</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Facturación</h1>
         <p className="text-sm text-text-muted">Tus acuerdos vigentes y tu historial de pagos con Novarix.</p>
       </div>
 

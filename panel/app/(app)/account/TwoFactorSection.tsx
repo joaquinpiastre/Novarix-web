@@ -40,7 +40,7 @@ function EnableFlow() {
           Guardá estos códigos de recuperación en un lugar seguro. Cada uno sirve una sola vez si
           perdés el acceso a tu app de autenticación. No se vuelven a mostrar.
         </p>
-        <ul className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-surface-hover p-3 font-mono text-sm">
+        <ul className="grid grid-cols-2 gap-2 rounded-xl border border-border bg-surface-hover p-3 font-mono text-sm">
           {confirmState.recoveryCodes.map((code) => (
             <li key={code}>{code}</li>
           ))}
@@ -62,7 +62,7 @@ function EnableFlow() {
           width={200}
           height={200}
           unoptimized
-          className="rounded-lg border border-border"
+          className="rounded-xl border border-border"
         />
         <input type="hidden" name="secret" value={beginState.secret} />
         <Input label="Código" name="code" inputMode="numeric" autoComplete="one-time-code" required />

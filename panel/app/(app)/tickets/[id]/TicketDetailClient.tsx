@@ -108,7 +108,7 @@ export function TicketDetailClient({
               name="status"
               defaultValue={ticket.status}
               onChange={(e) => e.currentTarget.form?.requestSubmit()}
-              className="mt-1 w-full rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-text-primary"
+              className="mt-1 w-full rounded-xl border border-border bg-surface px-2 py-1.5 text-sm text-text-primary"
             >
               {(Object.entries(TICKET_STATUS_LABELS) as [TicketStatus, string][]).map(([v, l]) => (
                 <option key={v} value={v}>
@@ -125,7 +125,7 @@ export function TicketDetailClient({
               name="priority"
               defaultValue={ticket.priority}
               onChange={(e) => e.currentTarget.form?.requestSubmit()}
-              className="mt-1 w-full rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-text-primary"
+              className="mt-1 w-full rounded-xl border border-border bg-surface px-2 py-1.5 text-sm text-text-primary"
             >
               {(Object.entries(TICKET_PRIORITY_LABELS) as [TicketPriority, string][]).map(([v, l]) => (
                 <option key={v} value={v}>
@@ -142,7 +142,7 @@ export function TicketDetailClient({
               name="assigned_to"
               defaultValue={ticket.assigned_to ?? ""}
               onChange={(e) => e.currentTarget.form?.requestSubmit()}
-              className="mt-1 w-full rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-text-primary"
+              className="mt-1 w-full rounded-xl border border-border bg-surface px-2 py-1.5 text-sm text-text-primary"
             >
               <option value="">Sin asignar</option>
               {assignable.map((p) => (
@@ -183,7 +183,7 @@ export function TicketDetailClient({
             .map((m) => (
               <li
                 key={m.id}
-                className={`rounded-lg border p-3 ${
+                className={`rounded-xl border p-3 ${
                   m.internal ? "border-warning/30 bg-warning/5" : "border-border bg-surface-hover"
                 }`}
               >

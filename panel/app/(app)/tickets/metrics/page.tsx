@@ -68,7 +68,7 @@ export default async function TicketsMetricsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-text-primary">Métricas de soporte</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Métricas de soporte</h1>
           <p className="text-sm text-text-muted">Volumen, tiempos de respuesta, SLA y satisfacción.</p>
         </div>
         <Link href="/tickets" className="text-sm text-accent hover:underline">
@@ -79,17 +79,17 @@ export default async function TicketsMetricsPage() {
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Tickets totales</p>
-          <p className="mt-1 text-xl font-semibold text-text-primary">{o?.total ?? 0}</p>
+          <p className="num mt-1 text-xl font-semibold text-text-primary">{o?.total ?? 0}</p>
         </Card>
         <Card>
           <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Cumplimiento de SLA</p>
-          <p className="mt-1 text-xl font-semibold text-text-primary">
+          <p className="num mt-1 text-xl font-semibold text-text-primary">
             {o?.sla_met_pct != null ? `${o.sla_met_pct.toFixed(0)}%` : "—"}
           </p>
         </Card>
         <Card>
           <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">CSAT promedio</p>
-          <p className="mt-1 text-xl font-semibold text-text-primary">
+          <p className="num mt-1 text-xl font-semibold text-text-primary">
             {o?.avg_csat != null ? o.avg_csat.toFixed(1) : "—"}
           </p>
         </Card>

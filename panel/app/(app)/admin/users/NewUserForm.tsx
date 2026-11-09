@@ -42,7 +42,7 @@ export function NewUserForm({ isFullAdmin }: { isFullAdmin: boolean }) {
       </form>
 
       {state.created && (
-        <div className="mt-4 rounded-lg border border-accent/30 bg-accent/10 p-4 text-sm">
+        <div className="mt-4 rounded-xl border border-accent/30 bg-accent/10 p-4 text-sm">
           <p className="font-medium text-text-primary">
             Cuenta creada para {state.created.fullName}.
           </p>

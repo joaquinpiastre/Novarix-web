@@ -220,7 +220,7 @@ function ChecklistCard({
         })}
       </ul>
       {opportunities.length > 0 && (
-        <div className="mt-4 rounded-lg border border-accent/30 bg-accent/10 p-3">
+        <div className="mt-4 rounded-xl border border-accent/30 bg-accent/10 p-3">
           <p className="text-xs font-semibold uppercase tracking-wider text-accent">
             Oportunidades de venta
           </p>
@@ -246,7 +246,7 @@ function CampaignsCard({ clientId, campaigns }: { clientId: string; campaigns: C
       </div>
 
       {showForm && (
-        <form action={formAction} className="mt-4 grid gap-4 rounded-lg border border-border bg-surface-hover p-4 sm:grid-cols-2">
+        <form action={formAction} className="mt-4 grid gap-4 rounded-xl border border-border bg-surface-hover p-4 sm:grid-cols-2">
           <input type="hidden" name="client_id" value={clientId} />
           <Input label="Nombre" name="name" required />
           <Select label="Canal" name="channel" required defaultValue="meta">
@@ -288,7 +288,7 @@ function CampaignsCard({ clientId, campaigns }: { clientId: string; campaigns: C
                   name="status"
                   defaultValue={c.status}
                   onChange={(e) => e.currentTarget.form?.requestSubmit()}
-                  className="rounded-lg border border-border bg-surface px-2 py-1 text-xs text-text-primary"
+                  className="rounded-xl border border-border bg-surface px-2 py-1 text-xs text-text-primary"
                 >
                   {(Object.entries(CAMPAIGN_STATUS_LABELS) as [CampaignStatus, string][]).map(
                     ([value, label]) => (
@@ -338,7 +338,7 @@ function ContentCalendar({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <CardTitle>Contenido</CardTitle>
         <div className="flex gap-2">
-          <Link href={`/calendar?client=${clientId}`} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-text-muted hover:text-text-primary">
+          <Link href={`/calendar?client=${clientId}`} className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm text-text-muted hover:text-text-primary">
             <CalendarDays size={15} />
             Ver en calendario
           </Link>
@@ -359,7 +359,7 @@ function ContentCalendar({
               {items
                 .filter((i) => i.status === status)
                 .map((item) => (
-                  <div key={item.id} className="rounded-lg border border-border bg-surface-hover p-2.5">
+                  <div key={item.id} className="rounded-xl border border-border bg-surface-hover p-2.5">
                     <button type="button" onClick={() => setDialogItem(item)} className="w-full text-left">
                       <p className="text-xs font-medium text-text-primary hover:text-accent">{item.title}</p>
                       <p className="mt-0.5 text-[11px] text-text-muted">

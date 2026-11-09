@@ -50,7 +50,7 @@ export default async function MarketingDashboardPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold text-text-primary">Marketing — portfolio</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Marketing — portfolio</h1>
         <p className="text-sm text-text-muted">Todos los clientes activos, de un vistazo.</p>
       </div>
 

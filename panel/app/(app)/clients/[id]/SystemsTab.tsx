@@ -157,7 +157,7 @@ function ProjectsCard({
       </div>
 
       {showForm && (
-        <form action={formAction} className="mt-4 grid gap-4 rounded-lg border border-border bg-surface-hover p-4 sm:grid-cols-2">
+        <form action={formAction} className="mt-4 grid gap-4 rounded-xl border border-border bg-surface-hover p-4 sm:grid-cols-2">
           <input type="hidden" name="client_id" value={clientId} />
           <Input label="Nombre" name="name" required />
           <Select label="Responsable" name="owner_id" defaultValue="">
@@ -205,7 +205,7 @@ function ProjectsCard({
                       name="status"
                       defaultValue={p.status}
                       onChange={(e) => e.currentTarget.form?.requestSubmit()}
-                      className="rounded-lg border border-border bg-surface px-2 py-1 text-xs text-text-primary"
+                      className="rounded-xl border border-border bg-surface px-2 py-1 text-xs text-text-primary"
                     >
                       {(Object.entries(PROJECT_STATUS_LABELS) as [ProjectStatus, string][]).map(
                         ([value, label]) => (
@@ -264,7 +264,7 @@ function TechAssetsCard({ clientId, assets }: { clientId: string; assets: TechAs
       </p>
 
       {showForm && (
-        <form action={formAction} className="mt-4 grid gap-4 rounded-lg border border-border bg-surface-hover p-4 sm:grid-cols-2">
+        <form action={formAction} className="mt-4 grid gap-4 rounded-xl border border-border bg-surface-hover p-4 sm:grid-cols-2">
           <input type="hidden" name="client_id" value={clientId} />
           <Select label="Tipo" name="asset_type" defaultValue="domain">
             {(Object.entries(TECH_ASSET_TYPE_LABELS) as [string, string][]).map(([value, label]) => (
@@ -343,7 +343,7 @@ function GhlBotsCard({ clientId, bots }: { clientId: string; bots: GhlBot[] }) {
       </p>
 
       {showForm && (
-        <form action={formAction} className="mt-4 grid gap-4 rounded-lg border border-border bg-surface-hover p-4 sm:grid-cols-2">
+        <form action={formAction} className="mt-4 grid gap-4 rounded-xl border border-border bg-surface-hover p-4 sm:grid-cols-2">
           <input type="hidden" name="client_id" value={clientId} />
           <Input label="Nombre" name="name" required />
           <Input label="Location ID de GHL" name="ghl_location_id" />

@@ -26,7 +26,7 @@ export default async function PortalAccountPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold text-text-primary">Mi cuenta</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Mi cuenta</h1>
         <p className="text-sm text-text-muted">
           {profile.full_name} · <Badge tone="neutral">{CLIENT_PORTAL_ROLE_LABELS[clientRole]}</Badge>
         </p>

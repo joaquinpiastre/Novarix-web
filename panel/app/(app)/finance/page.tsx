@@ -93,7 +93,7 @@ export default async function FinanceDashboardPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold text-text-primary">Finanzas — rentabilidad</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Finanzas — rentabilidad</h1>
         <p className="text-sm text-text-muted">
           La pauta del cliente (inversión en Meta Ads) nunca es ingreso de la agencia — se muestra separada.
         </p>
@@ -102,19 +102,19 @@ export default async function FinanceDashboardPage() {
       <div className="grid gap-4 sm:grid-cols-4">
         <Card>
           <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">MRR</p>
-          <p className="mt-1 text-xl font-semibold text-text-primary">{formatCurrency(mrrTotal)}</p>
+          <p className="num mt-1 text-xl font-semibold text-text-primary">{formatCurrency(mrrTotal)}</p>
         </Card>
         <Card>
           <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Margen total</p>
-          <p className="mt-1 text-xl font-semibold text-text-primary">{formatCurrency(marginTotal)}</p>
+          <p className="num mt-1 text-xl font-semibold text-text-primary">{formatCurrency(marginTotal)}</p>
         </Card>
         <Card>
           <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Ticket promedio</p>
-          <p className="mt-1 text-xl font-semibold text-text-primary">{formatCurrency(avgTicket)}</p>
+          <p className="num mt-1 text-xl font-semibold text-text-primary">{formatCurrency(avgTicket)}</p>
         </Card>
         <Card>
           <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Bajas este mes</p>
-          <p className="mt-1 text-xl font-semibold text-text-primary">{churn.length}</p>
+          <p className="num mt-1 text-xl font-semibold text-text-primary">{churn.length}</p>
         </Card>
       </div>
 

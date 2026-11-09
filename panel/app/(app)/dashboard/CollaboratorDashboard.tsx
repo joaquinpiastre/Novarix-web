@@ -27,7 +27,7 @@ export function CollaboratorDashboard({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold text-text-primary">Hola, {fullName.split(" ")[0]}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Hola, {fullName.split(" ")[0]}</h1>
         <p className="text-sm text-text-muted">Tu resumen de pagos y tareas.</p>
       </div>
 
@@ -66,7 +66,7 @@ export function CollaboratorDashboard({
         <CardTitle>Estado de tus tareas</CardTitle>
         <div className="mt-3 grid grid-cols-3 gap-3 text-center">
           {(["pending", "in_progress", "done"] as const).map((status) => (
-            <div key={status} className="rounded-lg border border-border bg-surface-hover p-3">
+            <div key={status} className="rounded-xl border border-border bg-surface-hover p-3">
               <p className="text-lg font-semibold text-text-primary">{taskCounts[status]}</p>
               <p className="text-xs text-text-muted">{TASK_STATUS_LABELS[status]}</p>
             </div>

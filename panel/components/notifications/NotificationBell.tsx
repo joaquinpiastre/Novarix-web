@@ -7,7 +7,14 @@ import { formatDateTime } from "@/lib/utils/dates";
 import type { NotificationRow } from "@/lib/types/domain";
 import { markAllNotificationsRead, markNotificationRead } from "@/app/(app)/notifications/actions";
 
-export function NotificationBell({ notifications }: { notifications: NotificationRow[] }) {
+export function NotificationBell({
+  notifications,
+  placement = "down",
+}: {
+  notifications: NotificationRow[];
+  /** "up": se abre hacia arriba (cuando la campana está abajo, en el menú lateral). */
+  placement?: "down" | "up";
+}) {
   const [open, setOpen] = useState(false);
   const unread = notifications.filter((n) => !n.read);
 
@@ -16,10 +23,10 @@ export function NotificationBell({ notifications }: { notifications: Notificatio
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="relative flex h-9 w-9 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
+        className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface text-text-muted transition-colors hover:bg-surface-hover hover:text-text-primary"
         aria-label="Notificaciones"
       >
-        <Bell size={18} />
+        <Bell size={16} />
         {unread.length > 0 && (
           <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-accent" />
         )}
@@ -33,7 +40,11 @@ export function NotificationBell({ notifications }: { notifications: Notificatio
             aria-label="Cerrar notificaciones"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute right-0 z-50 mt-2 w-80 rounded-xl border border-border bg-surface shadow-lg">
+          <div
+            className={`absolute z-50 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-surface shadow-card ${
+              placement === "up" ? "bottom-full left-0 mb-2" : "right-0 mt-2"
+            }`}
+          >
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <p className="text-sm font-semibold text-text-primary">Notificaciones</p>
               {unread.length > 0 && (

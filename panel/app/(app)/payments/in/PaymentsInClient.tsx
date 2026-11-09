@@ -127,7 +127,7 @@ function EditAgreementForm({
   }, [state, onDone]);
 
   return (
-    <form action={formAction} className="mt-3 grid gap-4 rounded-lg border border-border bg-surface-hover p-4 sm:grid-cols-2">
+    <form action={formAction} className="mt-3 grid gap-4 rounded-xl border border-border bg-surface-hover p-4 sm:grid-cols-2">
       <input type="hidden" name="id" value={agreement.id} />
       <Select label="Cliente" name="client_id" required defaultValue={agreement.client_id}>
         {clients.map((c) => (
@@ -242,7 +242,7 @@ function EditOneOffPaymentForm({
   }, [state, onDone]);
 
   return (
-    <form action={formAction} className="mt-3 grid gap-4 rounded-lg border border-border bg-surface-hover p-4 sm:grid-cols-2">
+    <form action={formAction} className="mt-3 grid gap-4 rounded-xl border border-border bg-surface-hover p-4 sm:grid-cols-2">
       <input type="hidden" name="id" value={payment.id} />
       <Select label="Cliente" name="client_id" required defaultValue={payment.client_id}>
         {clients.map((c) => (
@@ -303,7 +303,7 @@ export function PaymentsInClient({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold text-text-primary">Cobros a clientes</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Cobros a clientes</h1>
         <p className="text-sm text-text-muted">Acuerdos recurrentes y pagos puntuales.</p>
       </div>
 

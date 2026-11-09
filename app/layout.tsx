@@ -24,8 +24,10 @@ export const metadata: Metadata = {
   },
   description:
     "Agencia digital integral en Argentina: desarrollo de software, marketing digital, consultoría IT y automatización con IA.",
+  icons: { icon: "/icon.png", apple: "/apple-icon.png" },
   openGraph: {
     type: "website",
+    images: [{ url: "/brand/logo-full.png", width: 618, height: 669, alt: "Novarix Digital Agency" }],
     locale: "es_AR",
     siteName: "Novarix Digital Agency",
     title: "Novarix Digital Agency",

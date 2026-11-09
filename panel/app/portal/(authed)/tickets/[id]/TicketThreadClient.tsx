@@ -37,7 +37,7 @@ function CsatForm({ ticketId }: { ticketId: string }) {
               type="button"
               onClick={() => setScore(n)}
               className={`h-9 w-9 rounded-full border text-sm font-medium ${
-                n <= score ? "border-accent bg-accent text-white" : "border-border text-text-muted"
+                n <= score ? "border-accent bg-accent text-accent-fg" : "border-border text-text-muted"
               }`}
             >
               {n}
@@ -107,7 +107,7 @@ export function TicketThreadClient({
         <CardTitle>Conversación</CardTitle>
         <ul className="mt-4 flex flex-col gap-3">
           {messages.map((m) => (
-            <li key={m.id} className="rounded-lg border border-border bg-surface-hover p-3">
+            <li key={m.id} className="rounded-xl border border-border bg-surface-hover p-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs font-medium text-text-primary">{m.author_name}</p>
                 <p className="text-xs text-text-muted">{formatDateTime(m.created_at)}</p>

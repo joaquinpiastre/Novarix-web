@@ -70,7 +70,7 @@ function AssetPicker({ clientId, connectionId }: { clientId: string; connectionI
   const [state, formAction] = useFormState<ListAssetsState, FormData>(listAvailableMetaAssets, {});
 
   return (
-    <div className="mt-4 rounded-lg border border-border bg-surface-hover p-4">
+    <div className="mt-4 rounded-xl border border-border bg-surface-hover p-4">
       <form action={formAction}>
         <input type="hidden" name="client_id" value={clientId} />
         <input type="hidden" name="connection_id" value={connectionId} />

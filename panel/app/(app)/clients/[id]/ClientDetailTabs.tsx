@@ -313,7 +313,7 @@ function PortalUsersCard({
       </p>
 
       {showForm && (
-        <form action={formAction} className="mt-4 grid gap-4 rounded-lg border border-border bg-surface-hover p-4 sm:grid-cols-3">
+        <form action={formAction} className="mt-4 grid gap-4 rounded-xl border border-border bg-surface-hover p-4 sm:grid-cols-3">
           <input type="hidden" name="client_id" value={clientId} />
           <Input label="Email" name="email" type="email" required />
           <Select label="Rol" name="client_role" defaultValue="member">
@@ -553,7 +553,7 @@ function RentabilidadCard({
                     step="0.01"
                     defaultValue={t.monthly_cost_allocation ?? ""}
                     placeholder="0"
-                    className="w-28 rounded-lg border border-border bg-surface px-2 py-1 text-sm text-text-primary"
+                    className="w-28 rounded-xl border border-border bg-surface px-2 py-1 text-sm text-text-primary"
                   />
                   <button type="submit" className="text-xs text-accent hover:underline">
                     Guardar
@@ -826,7 +826,7 @@ export function ClientDetailTabs({
     <div className="flex flex-col gap-6">
       <div>
         <div className="flex items-center gap-3">
-          <h1 className="text-xl font-semibold text-text-primary">{client.name}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-text-primary">{client.name}</h1>
           <Badge tone={STATUS_TONE[client.status]}>{CLIENT_STATUS_LABELS[client.status]}</Badge>
         </div>
         <p className="text-sm text-text-muted">

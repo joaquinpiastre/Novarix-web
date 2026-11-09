@@ -122,7 +122,7 @@ export default async function PortalMetricsPage({
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-text-primary">Métricas</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Métricas</h1>
           <p className="text-sm text-text-muted">Resultados de tu inversión en Meta Ads/Instagram.</p>
         </div>
         <div className="flex gap-1.5">
@@ -131,9 +131,9 @@ export default async function PortalMetricsPage({
               key={p.value}
               href={`/portal/metrics?period=${p.value}`}
               className={clsx(
-                "rounded-lg px-3 py-1.5 text-xs font-medium",
+                "rounded-xl px-3 py-1.5 text-xs font-medium",
                 p.value === period
-                  ? "bg-accent text-white"
+                  ? "bg-accent text-accent-fg"
                   : "bg-surface-hover text-text-muted hover:text-text-primary"
               )}
             >

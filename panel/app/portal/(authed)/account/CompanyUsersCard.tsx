@@ -40,7 +40,7 @@ export function CompanyUsersCard({
       </div>
 
       {showForm && (
-        <form action={formAction} className="mt-4 flex flex-col gap-3 rounded-lg border border-border bg-surface-hover p-4">
+        <form action={formAction} className="mt-4 flex flex-col gap-3 rounded-xl border border-border bg-surface-hover p-4">
           <Input label="Email de tu compañero/a" name="email" type="email" required />
           {state.error && <p className="text-sm text-danger">{state.error}</p>}
           {state.sent && <p className="text-sm text-success">Invitación enviada.</p>}

@@ -1,9 +1,7 @@
 import type { MetadataRoute } from "next";
 
-// PWA instalable del portal de clientes. Reusa el icono de marca existente
-// (app/icon.svg) -- un SVG alcanza para instalar en Chrome/Android modernos;
-// para pixel-perfect en iOS/Android viejos convendria exportar PNGs 192/512
-// del logo, que queda pendiente de que el diseño entregue los assets.
+// PWA instalable del portal de clientes, con el logo de marca (app/icon.png,
+// 512x512, el mismo que usa Novarix Seller Hub).
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Novarix — Portal de clientes",
@@ -12,15 +10,11 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/portal",
     scope: "/portal",
     display: "standalone",
-    background_color: "#0a0118",
-    theme_color: "#7b2ff7",
+    background_color: "#0b0f1c",
+    theme_color: "#0b0f1c",
     icons: [
-      {
-        src: "/icon.svg",
-        sizes: "any",
-        type: "image/svg+xml",
-        purpose: "any",
-      },
+      { src: "/icon.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/apple-icon.png", sizes: "180x180", type: "image/png", purpose: "any" },
     ],
   };
 }

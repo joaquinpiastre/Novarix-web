@@ -133,7 +133,7 @@ export function CalendarView({
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-text-primary">Calendario de contenido</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Calendario de contenido</h1>
           <p className="text-sm text-text-muted">
             {canManage
               ? "Qué se graba y cuándo, de todos los clientes. Tocá un día para agendar una pieza."
@@ -150,13 +150,13 @@ export function CalendarView({
 
       <Card className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1">
-          <Link href={hrefWith({ m: format(subMonths(monthDate, 1), "yyyy-MM") })} className="rounded-lg p-2 text-text-muted hover:bg-surface-hover hover:text-text-primary" aria-label="Mes anterior">
+          <Link href={hrefWith({ m: format(subMonths(monthDate, 1), "yyyy-MM") })} className="rounded-xl p-2 text-text-muted hover:bg-surface-hover hover:text-text-primary" aria-label="Mes anterior">
             <ChevronLeft size={18} />
           </Link>
           <span className="min-w-[150px] text-center text-sm font-semibold capitalize text-text-primary">
             {format(monthDate, "MMMM yyyy", { locale: es })}
           </span>
-          <Link href={hrefWith({ m: format(addMonths(monthDate, 1), "yyyy-MM") })} className="rounded-lg p-2 text-text-muted hover:bg-surface-hover hover:text-text-primary" aria-label="Mes siguiente">
+          <Link href={hrefWith({ m: format(addMonths(monthDate, 1), "yyyy-MM") })} className="rounded-xl p-2 text-text-muted hover:bg-surface-hover hover:text-text-primary" aria-label="Mes siguiente">
             <ChevronRight size={18} />
           </Link>
           <Link href={hrefWith({ m: format(new Date(), "yyyy-MM") })} className="ml-1 text-xs text-accent hover:underline">
@@ -169,7 +169,7 @@ export function CalendarView({
             <select
               value={filters.client}
               onChange={(e) => router.push(hrefWith({ client: e.target.value }))}
-              className="rounded-lg border border-border bg-surface-hover px-3 py-1.5 text-sm text-text-primary"
+              className="rounded-xl border border-border bg-surface-hover px-3 py-1.5 text-sm text-text-primary"
               aria-label="Filtrar por cliente"
             >
               <option value="">Todos los clientes</option>
@@ -182,7 +182,7 @@ export function CalendarView({
             <select
               value={filters.person}
               onChange={(e) => router.push(hrefWith({ person: e.target.value }))}
-              className="rounded-lg border border-border bg-surface-hover px-3 py-1.5 text-sm text-text-primary"
+              className="rounded-xl border border-border bg-surface-hover px-3 py-1.5 text-sm text-text-primary"
               aria-label="Filtrar por responsable"
             >
               <option value="">Todo el equipo</option>
@@ -231,7 +231,7 @@ export function CalendarView({
                 <span
                   className={clsx(
                     "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs",
-                    day === todayKey ? "bg-accent font-semibold text-white" : inMonth ? "text-text-primary" : "text-text-muted"
+                    day === todayKey ? "bg-accent font-semibold text-accent-fg" : inMonth ? "text-text-primary" : "text-text-muted"
                   )}
                 >
                   {Number(day.slice(8))}

@@ -67,5 +67,5 @@ export const config = {
   // no por cookie) y debe poder responder JSON/401 en vez de un 302 a /login.
   // manifest.webmanifest tampoco necesita sesion -- el navegador lo pide
   // antes de instalar la PWA.
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|icon.svg|manifest.webmanifest).*)"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|brand/|manifest.webmanifest).*)"],
 };

@@ -19,7 +19,7 @@ export default async function PortalFilesPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold text-text-primary">Archivos</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Archivos</h1>
         <p className="text-sm text-text-muted">Kit de marca, entregables y documentos compartidos.</p>
       </div>
 

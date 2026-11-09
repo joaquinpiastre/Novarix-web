@@ -81,7 +81,7 @@ export function AssistantChat({
       <aside className="flex shrink-0 flex-col gap-2 lg:w-64">
         <Link
           href="/assistant"
-          className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-surface-hover px-4 py-2 text-sm font-medium text-text-primary hover:border-accent"
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-hover px-4 py-2 text-sm font-medium text-text-primary hover:border-accent"
         >
           <MessageSquarePlus size={16} />
           Nueva conversación
@@ -92,7 +92,7 @@ export function AssistantChat({
               <Link
                 href={`/assistant?c=${c.id}`}
                 className={clsx(
-                  "flex-1 truncate rounded-lg px-3 py-1.5 text-sm",
+                  "flex-1 truncate rounded-xl px-3 py-1.5 text-sm",
                   c.id === currentId ? "bg-surface-hover text-text-primary" : "text-text-muted hover:text-text-primary"
                 )}
               >
@@ -128,7 +128,7 @@ export function AssistantChat({
 
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-4">
           {!configured && (
-            <p className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
+            <p className="rounded-xl border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
               La IA todavía no está activada: falta cargar ANTHROPIC_API_KEY en Railway.
             </p>
           )}
@@ -142,7 +142,7 @@ export function AssistantChat({
                     key={s}
                     type="button"
                     onClick={() => send(s)}
-                    className="rounded-lg border border-border px-3 py-2 text-left text-sm text-text-primary hover:border-accent"
+                    className="rounded-xl border border-border px-3 py-2 text-left text-sm text-text-primary hover:border-accent"
                   >
                     {s}
                   </button>
@@ -156,7 +156,7 @@ export function AssistantChat({
               <div
                 className={clsx(
                   "max-w-[85%] rounded-xl px-4 py-2.5 text-sm",
-                  e.role === "user" ? "bg-accent text-white" : "border border-border bg-surface-hover text-text-primary"
+                  e.role === "user" ? "bg-accent text-accent-fg" : "border border-border bg-surface-hover text-text-primary"
                 )}
               >
                 {e.actions.length > 0 && (
@@ -208,7 +208,7 @@ export function AssistantChat({
             rows={2}
             disabled={!configured}
             placeholder="Escribí tu pedido… (Enter para enviar, Shift+Enter para salto de línea)"
-            className="flex-1 resize-none rounded-lg border border-border bg-surface-hover px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+            className="flex-1 resize-none rounded-xl border border-border bg-surface-hover px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
           />
           <Button type="submit" disabled={pending || !draft.trim() || !configured} aria-label="Enviar">
             <Send size={16} />

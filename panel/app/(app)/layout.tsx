@@ -1,11 +1,9 @@
 import { redirect } from "next/navigation";
 import { getSessionProfile } from "@/lib/auth/getSessionProfile";
 import { query } from "@/lib/db";
-import { Sidebar } from "@/components/nav/Sidebar";
-import { MobileNav } from "@/components/nav/MobileNav";
+import { AppShell } from "@/components/nav/AppShell";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { CommandPalette } from "@/components/search/CommandPalette";
-import { NotificationBell } from "@/components/notifications/NotificationBell";
 import type { NotificationRow } from "@/lib/types/domain";
 import { ChangePasswordForm } from "./account/ChangePasswordForm";
 import { signOut } from "./actions";
@@ -22,7 +20,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // puede validar la sesion contra la base (ver getSessionProfile.ts).
   if (profile.must_change_password) {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4">
+      <div className="flex min-h-dvh items-center justify-center px-4">
         <Card className="w-full max-w-sm">
           <CardTitle>Tenés que cambiar tu contraseña</CardTitle>
           <p className="mt-2 text-sm text-text-muted">
@@ -42,18 +40,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   );
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar profile={profile} signOut={signOut} />
-      <div className="flex flex-1 flex-col overflow-x-hidden">
-        <div className="flex justify-end border-b border-border px-4 py-2 sm:px-6 lg:px-10">
-          <NotificationBell notifications={notifications} />
-        </div>
-        <main className="flex-1 px-4 pb-20 pt-6 sm:px-6 md:pb-6 lg:px-10">
-          <div className="mx-auto max-w-6xl">{children}</div>
-        </main>
-      </div>
-      <MobileNav profile={profile} />
+    <>
+      <AppShell profile={profile} notifications={notifications} signOut={signOut}>
+        {children}
+      </AppShell>
       <CommandPalette />
-    </div>
+    </>
   );
 }

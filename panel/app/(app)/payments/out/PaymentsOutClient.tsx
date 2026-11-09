@@ -95,7 +95,7 @@ export function PaymentsOutClient({
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-text-primary">Pagos a equipo</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Pagos a equipo</h1>
           <p className="text-sm text-text-muted">
             {isAdmin ? "Lo que le pagaste a cada colaborador." : "Tu historial de pagos recibidos."}
           </p>

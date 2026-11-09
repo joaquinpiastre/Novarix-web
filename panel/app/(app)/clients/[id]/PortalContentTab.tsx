@@ -40,7 +40,7 @@ function ReportsCard({ clientId, reports }: { clientId: string; reports: ClientR
           await formAction(fd);
           formRef.current?.reset();
         }}
-        className="mt-4 grid gap-3 rounded-lg border border-border bg-surface-hover p-4 sm:grid-cols-2"
+        className="mt-4 grid gap-3 rounded-xl border border-border bg-surface-hover p-4 sm:grid-cols-2"
       >
         <input type="hidden" name="client_id" value={clientId} />
         <Input label="Título" name="title" placeholder="Reporte mensual" required />
@@ -90,7 +90,7 @@ function FilesCard({ clientId, files }: { clientId: string; files: ClientFile[] 
           await formAction(fd);
           formRef.current?.reset();
         }}
-        className="mt-4 flex flex-col gap-3 rounded-lg border border-border bg-surface-hover p-4"
+        className="mt-4 flex flex-col gap-3 rounded-xl border border-border bg-surface-hover p-4"
       >
         <input type="hidden" name="client_id" value={clientId} />
         <input type="file" name="file" required className="text-sm text-text-muted" />

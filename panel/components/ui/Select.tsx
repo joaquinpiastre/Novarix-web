@@ -9,12 +9,12 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
   ({ className, label, error, id, children, ...props }, ref) => (
     <label className="flex flex-col gap-1.5 text-sm">
-      {label && <span className="font-medium text-text-primary">{label}</span>}
+      {label && <span className="text-xs font-medium text-text-muted">{label}</span>}
       <select
         ref={ref}
         id={id}
         className={clsx(
-          "rounded-lg border border-border bg-surface-hover px-3 py-2 text-text-primary focus:border-accent focus:outline-none",
+          "min-h-10 rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none",
           error && "border-danger",
           className
         )}

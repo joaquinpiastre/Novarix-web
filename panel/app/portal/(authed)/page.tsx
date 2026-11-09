@@ -51,7 +51,7 @@ export default async function PortalHomePage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold text-text-primary">Hola, {profile.full_name.split(" ")[0]}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Hola, {profile.full_name.split(" ")[0]}</h1>
         <p className="text-sm text-text-muted">Este es el resumen de tu cuenta con Novarix.</p>
       </div>
 
@@ -59,26 +59,26 @@ export default async function PortalHomePage() {
         <Link href="/portal/content">
           <Card className="h-full">
             <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Pendientes de aprobar</p>
-            <p className="mt-1 text-xl font-semibold text-text-primary">{pendingApprovals}</p>
+            <p className="num mt-1 text-xl font-semibold text-text-primary">{pendingApprovals}</p>
           </Card>
         </Link>
         <Link href="/portal/tickets">
           <Card className="h-full">
             <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Tickets abiertos</p>
-            <p className="mt-1 text-xl font-semibold text-text-primary">{openTickets.length}</p>
+            <p className="num mt-1 text-xl font-semibold text-text-primary">{openTickets.length}</p>
           </Card>
         </Link>
         <Link href="/portal/payments">
           <Card className="h-full">
             <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Pagos pendientes</p>
-            <p className="mt-1 text-xl font-semibold text-text-primary">{formatCurrency(pendingPayments)}</p>
+            <p className="num mt-1 text-xl font-semibold text-text-primary">{formatCurrency(pendingPayments)}</p>
           </Card>
         </Link>
         {hasMarketing && kpis && (
           <Link href="/portal/metrics">
             <Card className="h-full">
               <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Inversión del mes</p>
-              <p className="mt-1 text-xl font-semibold text-text-primary">{formatCurrency(kpis.spend)}</p>
+              <p className="num mt-1 text-xl font-semibold text-text-primary">{formatCurrency(kpis.spend)}</p>
             </Card>
           </Link>
         )}

@@ -267,7 +267,7 @@ export function ContentItemDialog({
           />
 
           {canUseAi && !readOnly && (
-            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-accent/30 bg-accent/5 p-3 sm:col-span-2">
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-accent/30 bg-accent/5 p-3 sm:col-span-2">
               <Button type="button" variant="secondary" onClick={generate} disabled={generating || !form.client_id}>
                 <Sparkles size={15} />
                 {generating ? "Escribiendo…" : form.script || form.copy ? "Mejorar guion y copy con IA" : "Generar guion y copy con IA"}

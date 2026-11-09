@@ -9,12 +9,12 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ className, label, error, id, ...props }, ref) => (
     <label className="flex flex-col gap-1.5 text-sm">
-      {label && <span className="font-medium text-text-primary">{label}</span>}
+      {label && <span className="text-xs font-medium text-text-muted">{label}</span>}
       <input
         ref={ref}
         id={id}
         className={clsx(
-          "rounded-lg border border-border bg-surface-hover px-3 py-2 text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none",
+          "min-h-10 rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted/70 focus:border-accent focus:outline-none",
           error && "border-danger",
           className
         )}
@@ -34,12 +34,12 @@ interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, label, error, id, ...props }, ref) => (
     <label className="flex flex-col gap-1.5 text-sm">
-      {label && <span className="font-medium text-text-primary">{label}</span>}
+      {label && <span className="text-xs font-medium text-text-muted">{label}</span>}
       <textarea
         ref={ref}
         id={id}
         className={clsx(
-          "rounded-lg border border-border bg-surface-hover px-3 py-2 text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none",
+          "min-h-10 rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted/70 focus:border-accent focus:outline-none",
           error && "border-danger",
           className
         )}

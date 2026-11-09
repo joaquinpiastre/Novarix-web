@@ -28,7 +28,7 @@ export default async function PortalContentPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold text-text-primary">Contenido</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Contenido</h1>
         <p className="text-sm text-text-muted">Revisá y aprobá las piezas antes de que se publiquen.</p>
       </div>
       <ContentApprovalClient pending={pending} rest={rest} comments={comments} />
