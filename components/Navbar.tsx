@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { BrandLogo } from "@/components/BrandLogo";
+import { BrandLogo, BrandMark } from "@/components/BrandLogo";
 
 const links = [
   { href: "/", label: "Inicio" },
@@ -42,7 +42,7 @@ export function Navbar() {
       }`}
     >
       <nav className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <BrandLogo priority />
+        <BrandLogo priority subtitle />
 
         <ul className="hidden items-center gap-1 md:flex">
           {links.map((l) => {
@@ -111,6 +111,9 @@ export function Navbar() {
             className="overflow-hidden border-b border-border-subtle bg-bg-secondary/95 backdrop-blur-xl md:hidden"
           >
             <ul className="flex flex-col gap-1 px-4 py-4">
+              <li className="mb-2 flex justify-center border-b border-border-subtle pb-4">
+                <BrandMark size={64} />
+              </li>
               {links.map((l, i) => {
                 const active = pathname === l.href;
                 return (

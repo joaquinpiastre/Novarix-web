@@ -1,4 +1,5 @@
 "use client";
+import { BrandMark } from "@/components/BrandLogo";
 
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -61,6 +62,10 @@ export function HomeHero() {
           animate="visible"
           className="mx-auto max-w-4xl text-center"
         >
+          <motion.div variants={item} className="mb-8 flex justify-center">
+            <BrandMark size={120} float />
+          </motion.div>
+
           <motion.div variants={item}>
             <span className="inline-flex items-center gap-2 rounded-full border border-border-subtle bg-bg-secondary/60 px-4 py-1.5 text-sm text-text-secondary backdrop-blur-sm">
               <span className="text-purple-bright" aria-hidden>

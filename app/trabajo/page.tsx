@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BrandMark } from "@/components/BrandLogo";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { WorkShowcase } from "@/components/WorkShowcase";
 
@@ -22,6 +23,7 @@ export default function TrabajoPage() {
         <div className="pointer-events-none absolute bottom-10 right-10 h-80 w-80 rounded-full bg-accent-magenta/15 blur-[110px]" aria-hidden />
         <div className="relative mx-auto max-w-7xl">
           <ScrollReveal>
+            <BrandMark size={56} className="mb-6" />
             <h1 className="max-w-4xl font-display text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
               Proyectos que generan{" "}
               <span className="gradient-text">impacto real</span>

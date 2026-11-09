@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BrandMark } from "@/components/BrandLogo";
 import { ScrollReveal } from "@/components/ScrollReveal";
 
 export const metadata: Metadata = {
@@ -77,6 +78,7 @@ export default function ServiciosPage() {
         <div className="pointer-events-none absolute right-0 top-20 h-72 w-72 rounded-full bg-purple/20 blur-[100px]" aria-hidden />
         <div className="relative mx-auto max-w-7xl">
           <ScrollReveal>
+            <BrandMark size={56} className="mb-6" />
             <p className="text-sm font-medium uppercase tracking-widest text-purple-bright">
               Servicios
             </p>

@@ -23,7 +23,7 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-4">
           <div className="lg:col-span-2">
-            <BrandLogo height={44} width={200} className="opacity-90" />
+            <BrandLogo height={56} width={220} subtitle />
             <p className="mt-4 max-w-md text-text-secondary">
               Tecnología que transforma negocios.
             </p>

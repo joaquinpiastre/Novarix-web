@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { HomeHero } from "@/components/HomeHero";
+import { BrandMark } from "@/components/BrandLogo";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { AnimatedCounter } from "@/components/AnimatedCounter";
 import { HomeProcess } from "@/components/HomeProcess";
@@ -574,6 +575,7 @@ export default function HomePage() {
         />
         <div className="relative mx-auto max-w-4xl text-center">
           <ScrollReveal>
+            <BrandMark size={84} float className="mx-auto mb-8" />
             <h2 className="font-display text-3xl font-bold sm:text-4xl md:text-5xl">
               ¿Listo para <span className="gradient-text">crecer</span>?
             </h2>

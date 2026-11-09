@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ContactForm } from "@/components/ContactForm";
+import { BrandMark } from "@/components/BrandLogo";
 import { ScrollReveal } from "@/components/ScrollReveal";
 import { ADDRESS, CONTACT_EMAIL, WHATSAPP_DISPLAY, WHATSAPP_URL } from "@/lib/constants";
 
@@ -23,6 +24,7 @@ export default function ContactoPage() {
         <div className="pointer-events-none absolute left-1/2 top-0 h-72 w-72 -translate-x-1/2 rounded-full bg-purple/20 blur-[100px]" aria-hidden />
         <div className="relative mx-auto max-w-7xl">
           <ScrollReveal>
+            <BrandMark size={56} className="mb-6" />
             <h1 className="font-display text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
               Hablemos de lo que <span className="gradient-text">necesitás</span>
             </h1>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BrandMark, BrandLockup } from "@/components/BrandLogo";
 import { ScrollReveal } from "@/components/ScrollReveal";
 
 export const metadata: Metadata = {
@@ -51,6 +52,7 @@ export default function NosotrosPage() {
         <div className="pointer-events-none absolute left-1/4 top-32 h-64 w-64 rounded-full bg-violet-mid/25 blur-[90px]" aria-hidden />
         <div className="relative mx-auto max-w-7xl">
           <ScrollReveal>
+            <BrandMark size={56} className="mb-6" />
             <h1 className="max-w-4xl font-display text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
               Construimos el futuro digital de las{" "}
               <span className="gradient-text">empresas argentinas</span>
@@ -61,6 +63,7 @@ export default function NosotrosPage() {
 
       <section className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
         <ScrollReveal>
+          <BrandLockup size={140} className="mb-14" />
           <h2 className="font-display text-2xl font-bold sm:text-3xl">Nuestra historia</h2>
           <p className="mt-6 text-lg leading-relaxed text-text-secondary">
             Novarix nació de una convicción simple: las empresas merecen un socio tecnológico
