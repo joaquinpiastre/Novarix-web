@@ -12,6 +12,7 @@
     "migrate": "node scripts/migrate.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.6.0",
     "@aws-sdk/client-s3": "^3.1163.0",
     "@aws-sdk/s3-request-presigner": "^3.1163.0",
     "@radix-ui/react-dialog": "^1.1.1",

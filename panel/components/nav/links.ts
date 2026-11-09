@@ -13,6 +13,8 @@ import {
   Wrench,
   PiggyBank,
   Ticket,
+  CalendarDays,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 
@@ -45,6 +47,20 @@ export const NAV_LINKS: NavLink[] = [
     label: "Marketing",
     icon: TrendingUp,
     permission: "marketing.view_all",
+  },
+  {
+    href: "/calendar",
+    label: "Calendario",
+    icon: CalendarDays,
+    permission: "marketing.view_all",
+    // marketing (no admin) ve solo lo que tiene delegado, en modo lectura.
+    extraCheck: (profile) => profile.role === "marketing",
+  },
+  {
+    href: "/assistant",
+    label: "Asistente IA",
+    icon: Sparkles,
+    permission: "ai.use",
   },
   {
     href: "/systems",

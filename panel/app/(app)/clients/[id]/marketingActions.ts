@@ -1,12 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { query } from "@/lib/db";
+import { query, queryOne } from "@/lib/db";
+import { notifyClientApproval } from "@/lib/marketing/contentItems";
 import { requireClientAccess } from "@/lib/auth/requireClientAccess";
 import { recordAudit } from "@/lib/audit/log";
 import { getClientIp } from "@/lib/utils/request";
 import { CHECKLIST_ITEMS } from "@/lib/marketing/checklist";
-import { notifyMany } from "@/lib/notifications/create";
 import type {
   CampaignStatus,
   ContentStatus,
@@ -130,34 +130,6 @@ export async function toggleChecklistItem(formData: FormData): Promise<void> {
 
 // ===== Contenido =====
 
-export async function createContentItem(
-  _prevState: ActionState,
-  formData: FormData
-): Promise<ActionState> {
-  const client_id = String(formData.get("client_id") ?? "");
-  const { userId: actorId } = await requireClientAccess(client_id);
-
-  const title = String(formData.get("title") ?? "").trim();
-  const channel = String(formData.get("channel") ?? "").trim();
-  const format = String(formData.get("format") ?? "").trim();
-  if (!title || !channel || !format) return { error: "Completá título, canal y formato." };
-
-  const copy = String(formData.get("copy") ?? "").trim() || null;
-  const attachment_url = String(formData.get("attachment_url") ?? "").trim() || null;
-  const scheduledRaw = String(formData.get("scheduled_at") ?? "").trim();
-  const scheduled_at = scheduledRaw ? new Date(scheduledRaw).toISOString() : null;
-  const assigned_to = String(formData.get("assigned_to") ?? "") || null;
-
-  await query(
-    `insert into content_items (client_id, channel, format, title, copy, attachment_url, scheduled_at, assigned_to, created_by)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-    [client_id, channel, format, title, copy, attachment_url, scheduled_at, assigned_to, actorId]
-  );
-
-  revalidatePath(`/clients/${client_id}`);
-  return {};
-}
-
 export async function updateContentStatus(formData: FormData): Promise<void> {
   const id = String(formData.get("id") ?? "");
   const client_id = String(formData.get("client_id") ?? "");
@@ -169,34 +141,15 @@ export async function updateContentStatus(formData: FormData): Promise<void> {
   await query(
     `update content_items set status = $1, updated_at = now()${
       setPublished ? ", published_at = coalesce(published_at, now())" : ""
-    } where id = $2`,
-    [status, id]
+    } where id = $2 and client_id = $3`,
+    [status, id, client_id]
   );
 
   if (status === "aprobacion_cliente") {
-    const portalUsers = await query<{ id: string }>(
-      "select id from profiles where client_id = $1 and role = 'client'",
-      [client_id]
-    );
-    const item = await query<{ title: string }>("select title from content_items where id = $1", [id]);
-    await notifyMany(
-      portalUsers.map((u) => u.id),
-      "content_approval",
-      "Tenés una pieza para aprobar",
-      item[0]?.title,
-      "/portal/content"
-    );
+    const item = await queryOne<{ title: string }>("select title from content_items where id = $1", [id]);
+    if (item) await notifyClientApproval(client_id, item.title);
   }
 
-  revalidatePath(`/clients/${client_id}`);
-}
-
-export async function deleteContentItem(formData: FormData): Promise<void> {
-  const id = String(formData.get("id") ?? "");
-  const client_id = String(formData.get("client_id") ?? "");
-  await requireClientAccess(client_id);
-  if (!id) return;
-  await query("delete from content_items where id = $1", [id]);
   revalidatePath(`/clients/${client_id}`);
 }
 

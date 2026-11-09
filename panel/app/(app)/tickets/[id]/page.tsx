@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getSessionProfile } from "@/lib/auth/getSessionProfile";
 import { canAccessTicket } from "@/lib/tickets/authorize";
+import { can } from "@/lib/auth/permissions";
 import { query, queryOne } from "@/lib/db";
 import type { SupportTicket, TicketAttachment, TicketEvent, TicketMessage } from "@/lib/types/domain";
 import { TicketDetailClient } from "./TicketDetailClient";
@@ -78,6 +79,7 @@ export default async function TicketDetailPage({ params }: { params: { id: strin
       projects={projects}
       services={services}
       currentUserId={userId}
+      canUseAi={can(profile, "ai.use")}
     />
   );
 }

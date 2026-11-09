@@ -10,6 +10,9 @@ import { buildStorageKey, uploadObject } from "@/lib/storage/s3";
 import { notifyClientOfReply, notifyClientOfStatusChange } from "@/lib/tickets/notify";
 import { recordAudit } from "@/lib/audit/log";
 import { getClientIp } from "@/lib/utils/request";
+import { can } from "@/lib/auth/permissions";
+import { aiErrorMessage, isAiConfigured } from "@/lib/ai/client";
+import { suggestTicketReply } from "@/lib/ai/generate";
 import {
   TICKET_STATUS_LABELS,
   type TicketPriority,
@@ -209,4 +212,16 @@ export async function convertToTask(formData: FormData): Promise<void> {
 
   revalidatePath(`/tickets/${ticketId}`);
   revalidatePath("/tasks");
+}
+
+/** Borrador de respuesta con IA: solo lo devuelve para el textarea, no envía nada. */
+export async function suggestReplyAction(ticketId: string): Promise<{ text?: string; error?: string }> {
+  const { profile } = await loadTicketOrThrow(ticketId);
+  if (!can(profile, "ai.use")) return { error: "No tenés acceso a la IA." };
+  if (!isAiConfigured()) return { error: "La IA todavía no está configurada (falta ANTHROPIC_API_KEY)." };
+  try {
+    return { text: await suggestTicketReply(ticketId) };
+  } catch (err) {
+    return { error: aiErrorMessage(err) };
+  }
 }

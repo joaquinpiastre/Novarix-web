@@ -10,6 +10,7 @@ import { Input, Textarea } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import { Tabs, type TabItem } from "@/components/ui/Tabs";
+import { can } from "@/lib/auth/permissions";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate, formatMonthLabel } from "@/lib/utils/dates";
 import {
@@ -768,6 +769,8 @@ export function ClientDetailTabs({
         assignable={allProfiles}
         canApprovePlan={full}
         comments={contentComments}
+        clientName={client.name}
+        canUseAi={can(access.profile, "ai.use")}
       />
     ),
   });

@@ -26,6 +26,8 @@ describe("navLinksFor", () => {
       "/dashboard",
       "/clients",
       "/marketing",
+      "/calendar",
+      "/assistant",
       "/systems",
       "/payments/out",
       "/payments/in",
@@ -49,10 +51,11 @@ describe("navLinksFor", () => {
     ]);
   });
 
-  it("marketing ve clientes (filtrado a los suyos en la página) pero no cobros/pagos de otros", () => {
+  it("marketing ve clientes y su calendario (filtrado a lo suyo en la página), sin IA ni cobros/pagos de otros", () => {
     expect(hrefs(profile("marketing"))).toEqual([
       "/dashboard",
       "/clients",
+      "/calendar",
       "/payments/out",
       "/tickets",
       "/tasks",
@@ -60,11 +63,13 @@ describe("navLinksFor", () => {
     ]);
   });
 
-  it("marketing_admin ve clientes, marketing y usuarios (para altas de marketing), no cobros/pagos", () => {
+  it("marketing_admin ve clientes, marketing, calendario, IA y usuarios (para altas de marketing), no cobros/pagos", () => {
     expect(hrefs(profile("marketing_admin"))).toEqual([
       "/dashboard",
       "/clients",
       "/marketing",
+      "/calendar",
+      "/assistant",
       "/payments/out",
       "/tickets",
       "/tasks",

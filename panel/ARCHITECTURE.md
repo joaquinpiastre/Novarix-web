@@ -124,3 +124,29 @@ registros en el proveedor de DNS:
 
 Railway valida el TXT automáticamente y emite el certificado SSL una vez
 que el CNAME propaga (puede tardar hasta un par de horas).
+
+## Calendario de contenido y asistente de IA (migración 0019)
+
+- `content_items` suma `recording_at` (fecha de grabación, la que usa `/calendar`), `channels text[]` (redes; `channel` queda como la lista unida, por compatibilidad), `script` (guion) y `notes`. Toda alta/edición pasa por `lib/marketing/contentItems.ts`, que valida con zod, interpreta fechas en hora de Mendoza y exige que el responsable tenga rol `marketing` o `marketing_admin`.
+- `ai_conversations`: una fila por conversación, privada de su autor (`profile_id`). `messages` guarda el historial exactamente como lo devuelve la API de Claude (hay que reenviarlo sin modificar), más el conteo de tokens.
+
+### Modelo de seguridad de la IA
+
+```
+pedido ──► /assistant (requirePermission "ai.use": admin, marketing_admin)
+              │
+              ▼
+        lib/ai/agent.ts ── loop con Claude (máx. 12 pasos)
+              │  el modelo solo puede pedir herramientas
+              ▼
+        lib/ai/tools.ts ── runTool():
+              1. ¿existe la herramienta?           (si no: error)
+              2. can(profile, permiso de la herramienta)  (mismo permiso que la pantalla)
+              3. zod valida el input
+              4. ejecuta SQL parametrizado / la misma server action del panel
+              5. si escribió: audit_log "ai.<herramienta>"
+```
+
+- La lista de herramientas que se le ofrece al modelo ya viene filtrada por permisos, y además se revalida en cada ejecución (el modelo no puede "pedir" una que no se le ofreció).
+- No hay herramientas para borrar, ni para usuarios, pagos, configuración o código: la IA no tiene forma de hacerlo.
+- Los textos que vienen de la base (tickets, comentarios de clientes) se tratan como datos; el prompt de sistema lo explicita para reducir riesgo de prompt injection, y de todos modos el alcance máximo es el de los permisos de la persona.

@@ -28,7 +28,7 @@ BUCKET_SECRET_ACCESS_KEY=
 BUCKET_REGION=
 BUCKET_NAME=
 
-# Opcionales -- sin estas, Sentry/Resend quedan inactivos (no rompe nada)
+# Opcionales -- sin estas, Sentry/Resend/IA quedan inactivos (no rompe nada)
 SENTRY_DSN=
 NEXT_PUBLIC_SENTRY_DSN=
 SENTRY_ORG=
@@ -36,6 +36,8 @@ SENTRY_PROJECT=
 SENTRY_AUTH_TOKEN=
 RESEND_API_KEY=
 RESEND_FROM=
+# Asistente de IA y botones "Generar con IA" (console.anthropic.com)
+ANTHROPIC_API_KEY=
 ```
 
 - `ENCRYPTION_KEY`: cifra secretos guardados en la base (hoy: el secreto TOTP de 2FA; a futuro: tokens de integraciones como Meta). Si la perdés, lo cifrado con ella queda irrecuperable.
@@ -127,6 +129,26 @@ Verificar en el dashboard de Railway del servicio de Postgres (pestaña **Backup
 - **admin** (vos): acceso total.
 - **programmer** / **marketing**: ven su propio resumen en el dashboard, su propio historial de pagos recibidos (`payments/out`), y sus tareas asignadas (más las sin asignar, pueden cambiarles el estado). No tienen acceso a `payments/in`, `reminders` ni `admin/users`.
 
+## Calendario de contenido (`/calendar`)
+
+Vista mensual de **cuándo se graba** cada pieza (y, opcional, cuándo se publica), de todos los clientes, filtrable por cliente y por responsable. Tocar un día crea una pieza con esa fecha; tocar una pieza la abre para editar.
+
+Cada pieza tiene: cliente, título/idea, tipo de contenido (reel, post, carrusel, historia, video largo, anuncio, vivo, otro), redes sociales (varias), fecha de grabación, fecha de publicación, responsable, estado, guion, copy, notas especiales y link a archivos. El mismo formulario se usa desde la pestaña **Marketing** de cada cliente.
+
+- **Responsable**: solo se puede delegar a personas con rol `marketing` o `marketing_admin` (validado en el server, `lib/marketing/contentItems.ts`). Al delegar, la persona recibe una notificación con link directo a la pieza.
+- **Quién lo ve**: `admin` y `marketing_admin` ven y editan todo. `marketing` ve solo lo que tiene delegado y puede cambiarle el estado (para editar el resto, entra por la ficha de un cliente al que esté asignado).
+- Las fechas se interpretan siempre en hora de Mendoza (UTC-3), también en el server.
+
+## Asistente de IA (`/assistant`)
+
+Disponible **solo para `admin` y `marketing_admin`** (permiso `ai.use`; `marketing`, `programmer` y clientes no lo ven). Usa Claude (`claude-opus-5-5`) y necesita `ANTHROPIC_API_KEY`; sin la clave, la pantalla muestra un aviso y nada se rompe.
+
+- **Qué puede hacer**: consultar clientes, contenido, tareas, tickets, métricas de Meta y (solo admin) finanzas; **cargar y modificar** contenido del calendario (con guion y copy), tareas, datos de clientes, campañas, estado/prioridad/asignación de tickets y recordatorios.
+- **Qué no puede hacer**: modificar el código, la configuración, usuarios o pagos, ni borrar registros. No es una restricción "de palabra": la IA solo puede actuar a través de las herramientas de `lib/ai/tools.ts`, y no existe ninguna herramienta para eso.
+- **Permisos**: cada herramienta exige el mismo permiso que la pantalla equivalente, y se revalida al ejecutarla. Un `marketing_admin` no puede, vía IA, ver finanzas ni crear tareas, igual que en el panel.
+- **Trazabilidad**: toda modificación queda en `audit_log` como `ai.<herramienta>`, con quién la pidió. Las conversaciones son privadas de cada persona (`ai_conversations`) y guardan cuántos tokens se usaron.
+- **Otros usos de la IA**: el botón "Generar guion y copy con IA" en cada pieza de contenido (usa el tono de marca y los copys recientes del cliente) y "Sugerir respuesta con IA" en los tickets (solo arma el borrador; nada se envía solo).
+
 ## Portal de clientes
 
 Ver `ARCHITECTURE.md` para el modelo de datos completo y la matriz de
@@ -172,8 +194,23 @@ permisos del rol `client`. Resumen:
       `/portal/account` — confirmar que el `member` desactivado no puede
       volver a loguearse.
 
+### Checklist — calendario e IA
+
+- [ ] En `/calendar`, tocar un día, crear un reel con dos redes, guion y
+      notas, y delegarlo a alguien de marketing — verificar que le llega la
+      notificación y que el link abre la pieza.
+- [ ] Intentar delegar a un admin o programador: no aparecen en la lista (y
+      el server lo rechaza si se fuerza).
+- [ ] Entrar como `marketing`: ver solo lo delegado, poder cambiar el
+      estado, no ver "Asistente IA" en el menú.
+- [ ] Con `ANTHROPIC_API_KEY` cargada, pedirle al asistente "armá 2 reels
+      para <cliente> el jueves a las 10, asignados a <persona>" y verificar
+      que aparecen en el calendario y en `audit_log` como `ai.crear_contenido`.
+- [ ] Como `marketing_admin`, pedirle al asistente las finanzas del mes:
+      tiene que responder que no tiene acceso.
+
 ## Seguridad
 
 - **No hay una segunda capa de seguridad a nivel de base de datos** (RLS) — toda la restricción de acceso vive en `lib/auth/permissions.ts` y se aplica desde `app/(app)/**` vía `requirePermission()`/`can()`. Cualquier ruta o acción nueva tiene que pasar por ahí; `lib/auth/permissions.test.ts` falla si se agrega un permiso nuevo sin un caso de test que lo cubra.
 - Login: rate limit (5 intentos fallidos / 15 min, por email y por IP), rotación de sesión, invalidación de otras sesiones al resetear contraseña, cambio de contraseña obligatorio en cuentas nuevas o reseteadas, 2FA opcional (TOTP) para cualquier rol desde **Mi cuenta**.
-- Toda alta/reseteo de usuario y toda mutación de pagos queda en `audit_log` (quién, qué, antes/después, IP).
+- Toda alta/reseteo de usuario y toda mutación de pagos queda en `audit_log` (quién, qué, antes/después, IP). Lo mismo para todo cambio hecho por el asistente de IA (`ai.*`) y para las altas/ediciones/bajas de contenido.

@@ -150,12 +150,18 @@ export interface ContentItem {
   client_id: string;
   marketing_plan_id: string | null;
   channel: string;
+  /** Redes sociales destino (reemplaza a `channel`, que queda como la lista unida). */
+  channels: string[];
   format: string;
   title: string;
   copy: string | null;
+  script: string | null;
+  notes: string | null;
   attachment_url: string | null;
   status: ContentStatus;
   scheduled_at: string | null;
+  /** Cuándo se graba/produce la pieza (el calendario de producción usa esta fecha). */
+  recording_at: string | null;
   published_at: string | null;
   published_url: string | null;
   assigned_to: string | null;

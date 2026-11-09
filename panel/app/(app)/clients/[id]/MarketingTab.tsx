@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
-import { Plus, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { CalendarDays, Plus } from "lucide-react";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Input";
@@ -23,11 +24,11 @@ import {
   type Profile,
 } from "@/lib/types/domain";
 import { CHECKLIST_ITEMS } from "@/lib/marketing/checklist";
+import { CONTENT_ASSIGNABLE_ROLES, formatLabel, networkLabel } from "@/lib/marketing/content";
+import { ContentItemDialog } from "@/components/content/ContentItemDialog";
 import {
   createCampaign,
-  createContentItem,
   createMarketingPlan,
-  deleteContentItem,
   saveBrandKit,
   toggleChecklistItem,
   updateCampaignStatus,
@@ -308,14 +309,18 @@ function CampaignsCard({ clientId, campaigns }: { clientId: string; campaigns: C
 
 function ContentCalendar({
   clientId,
+  clientName,
   items,
   assignable,
   comments,
+  canUseAi,
 }: {
   clientId: string;
+  clientName: string;
   items: ContentItem[];
   assignable: Pick<Profile, "id" | "full_name" | "role">[];
   comments: ContentCommentRow[];
+  canUseAi: boolean;
 }) {
   const commentsByItem = new Map<string, ContentCommentRow[]>();
   for (const c of comments) {
@@ -323,55 +328,26 @@ function ContentCalendar({
     list.push(c);
     commentsByItem.set(c.entity_id, list);
   }
-  const [showForm, setShowForm] = useState(false);
-  const [state, formAction] = useFormState<ActionState, FormData>(createContentItem, {});
+  const [dialogItem, setDialogItem] = useState<ContentItem | null | undefined>(undefined);
+  const marketers = assignable
+    .filter((p) => CONTENT_ASSIGNABLE_ROLES.includes(p.role))
+    .map((p) => ({ id: p.id, name: p.full_name }));
 
   return (
     <Card>
-      <div className="flex items-center justify-between">
-        <CardTitle>Calendario de contenido</CardTitle>
-        <Button variant="secondary" onClick={() => setShowForm((v) => !v)}>
-          <Plus size={16} />
-          {showForm ? "Cerrar" : "Nueva pieza"}
-        </Button>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <CardTitle>Contenido</CardTitle>
+        <div className="flex gap-2">
+          <Link href={`/calendar?client=${clientId}`} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-text-muted hover:text-text-primary">
+            <CalendarDays size={15} />
+            Ver en calendario
+          </Link>
+          <Button variant="secondary" onClick={() => setDialogItem(null)}>
+            <Plus size={16} />
+            Nueva pieza
+          </Button>
+        </div>
       </div>
-
-      {showForm && (
-        <form action={formAction} className="mt-4 grid gap-4 rounded-lg border border-border bg-surface-hover p-4 sm:grid-cols-2">
-          <input type="hidden" name="client_id" value={clientId} />
-          <Input label="Título" name="title" required />
-          <Select label="Canal" name="channel" required defaultValue="instagram">
-            <option value="instagram">Instagram</option>
-            <option value="facebook">Facebook</option>
-            <option value="whatsapp">WhatsApp</option>
-            <option value="other">Otro</option>
-          </Select>
-          <Select label="Formato" name="format" required defaultValue="post">
-            <option value="post">Post</option>
-            <option value="carrusel">Carrusel</option>
-            <option value="reel">Reel</option>
-            <option value="historia">Historia</option>
-            <option value="anuncio">Anuncio</option>
-          </Select>
-          <Input label="Fecha programada" name="scheduled_at" type="datetime-local" />
-          <div className="sm:col-span-2">
-            <Textarea label="Copy" name="copy" rows={2} />
-          </div>
-          <Input label="Link a archivo (Drive/Canva/etc.)" name="attachment_url" />
-          <Select label="Responsable" name="assigned_to" defaultValue="">
-            <option value="">Sin asignar</option>
-            {assignable.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.full_name}
-              </option>
-            ))}
-          </Select>
-          {state.error && <p className="text-sm text-danger sm:col-span-2">{state.error}</p>}
-          <div className="sm:col-span-2">
-            <SubmitButton label="Agregar" pendingLabel="Agregando…" />
-          </div>
-        </form>
-      )}
 
       <div className="mt-4 grid gap-3 overflow-x-auto pb-2 lg:grid-cols-7">
         {CONTENT_STATUS_ORDER.map((status) => (
@@ -384,13 +360,18 @@ function ContentCalendar({
                 .filter((i) => i.status === status)
                 .map((item) => (
                   <div key={item.id} className="rounded-lg border border-border bg-surface-hover p-2.5">
-                    <p className="text-xs font-medium text-text-primary">{item.title}</p>
-                    <p className="mt-0.5 text-[11px] text-text-muted">
-                      {item.channel} · {item.format}
-                    </p>
-                    {item.scheduled_at && (
-                      <p className="mt-0.5 text-[11px] text-text-muted">{formatDate(item.scheduled_at)}</p>
-                    )}
+                    <button type="button" onClick={() => setDialogItem(item)} className="w-full text-left">
+                      <p className="text-xs font-medium text-text-primary hover:text-accent">{item.title}</p>
+                      <p className="mt-0.5 text-[11px] text-text-muted">
+                        {formatLabel(item.format)} · {(item.channels?.length ? item.channels : [item.channel]).map(networkLabel).join(", ")}
+                      </p>
+                      {item.recording_at && (
+                        <p className="mt-0.5 text-[11px] text-text-muted">Grabación: {formatDate(item.recording_at)}</p>
+                      )}
+                      {item.scheduled_at && (
+                        <p className="mt-0.5 text-[11px] text-text-muted">Publicación: {formatDate(item.scheduled_at)}</p>
+                      )}
+                    </button>
                     {(commentsByItem.get(item.id) ?? []).length > 0 && (
                       <details className="mt-1.5">
                         <summary className="cursor-pointer text-[11px] text-accent">
@@ -409,44 +390,39 @@ function ContentCalendar({
                         </ul>
                       </details>
                     )}
-                    <div className="mt-2 flex items-center gap-1.5">
-                      <select
-                        defaultValue={item.status}
-                        onChange={(e) => {
-                          const fd = new FormData();
-                          fd.set("id", item.id);
-                          fd.set("client_id", clientId);
-                          fd.set("status", e.target.value);
-                          updateContentStatus(fd);
-                        }}
-                        className="flex-1 rounded border border-border bg-surface px-1.5 py-1 text-[11px] text-text-primary"
-                      >
-                        {CONTENT_STATUS_ORDER.map((s) => (
-                          <option key={s} value={s}>
-                            {CONTENT_STATUS_LABELS[s]}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        aria-label="Eliminar"
-                        className="text-text-muted hover:text-danger"
-                        onClick={() => {
-                          const fd = new FormData();
-                          fd.set("id", item.id);
-                          fd.set("client_id", clientId);
-                          deleteContentItem(fd);
-                        }}
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
+                    <select
+                      defaultValue={item.status}
+                      onChange={(e) => {
+                        const fd = new FormData();
+                        fd.set("id", item.id);
+                        fd.set("client_id", clientId);
+                        fd.set("status", e.target.value);
+                        updateContentStatus(fd);
+                      }}
+                      className="mt-2 w-full rounded border border-border bg-surface px-1.5 py-1 text-[11px] text-text-primary"
+                    >
+                      {CONTENT_STATUS_ORDER.map((s) => (
+                        <option key={s} value={s}>
+                          {CONTENT_STATUS_LABELS[s]}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 ))}
             </div>
           </div>
         ))}
       </div>
+
+      <ContentItemDialog
+        open={dialogItem !== undefined}
+        onOpenChange={(open) => !open && setDialogItem(undefined)}
+        item={dialogItem ?? null}
+        defaults={{ client_id: clientId }}
+        clients={[{ id: clientId, name: clientName }]}
+        marketers={marketers}
+        canUseAi={canUseAi}
+      />
     </Card>
   );
 }
@@ -502,6 +478,8 @@ export function MarketingTab({
   assignable,
   canApprovePlan,
   comments,
+  clientName,
+  canUseAi,
 }: {
   clientId: string;
   plan: MarketingPlan | null;
@@ -514,6 +492,8 @@ export function MarketingTab({
   assignable: Pick<Profile, "id" | "full_name" | "role">[];
   canApprovePlan: boolean;
   comments: ContentCommentRow[];
+  clientName: string;
+  canUseAi: boolean;
 }) {
   return (
     <div className="flex flex-col gap-5">
@@ -521,7 +501,14 @@ export function MarketingTab({
         <PlanCard clientId={clientId} plan={plan} deliverables={deliverables} canApprove={canApprovePlan} />
         <ChecklistCard clientId={clientId} completed={checklistCompleted} opportunities={opportunities} />
       </div>
-      <ContentCalendar clientId={clientId} items={contentItems} assignable={assignable} comments={comments} />
+      <ContentCalendar
+        clientId={clientId}
+        clientName={clientName}
+        items={contentItems}
+        assignable={assignable}
+        comments={comments}
+        canUseAi={canUseAi}
+      />
       <div className="grid gap-5 lg:grid-cols-2">
         <CampaignsCard clientId={clientId} campaigns={campaigns} />
         <BrandKitCard clientId={clientId} brandKit={brandKit} />

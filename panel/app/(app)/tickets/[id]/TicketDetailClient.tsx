@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, useTransition } from "react";
+import { Sparkles } from "lucide-react";
 import { useFormState, useFormStatus } from "react-dom";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -15,7 +16,15 @@ import {
   type TicketPriority,
   type TicketStatus,
 } from "@/lib/types/domain";
-import { assignTicket, addTeamMessage, convertToTask, updateTicketPriority, updateTicketStatus, type ActionState } from "../actions";
+import {
+  assignTicket,
+  addTeamMessage,
+  convertToTask,
+  suggestReplyAction,
+  updateTicketPriority,
+  updateTicketStatus,
+  type ActionState,
+} from "../actions";
 import type { TicketMessageRow } from "./page";
 
 function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: string }) {
@@ -35,6 +44,7 @@ export function TicketDetailClient({
   projects,
   services,
   currentUserId,
+  canUseAi,
 }: {
   ticket: SupportTicket & { client_name: string };
   messages: TicketMessageRow[];
@@ -43,8 +53,24 @@ export function TicketDetailClient({
   projects: { id: string; name: string }[];
   services: { id: string; name: string }[];
   currentUserId: string;
+  canUseAi: boolean;
 }) {
   const [showInternal, setShowInternal] = useState(true);
+  const replyRef = useRef<HTMLTextAreaElement>(null);
+  const [suggesting, startSuggesting] = useTransition();
+  const [suggestError, setSuggestError] = useState<string | null>(null);
+
+  function suggestReply() {
+    setSuggestError(null);
+    startSuggesting(async () => {
+      const result = await suggestReplyAction(ticket.id);
+      if (result.error) setSuggestError(result.error);
+      else if (replyRef.current && result.text) {
+        replyRef.current.value = result.text;
+        replyRef.current.focus();
+      }
+    });
+  }
   const [messageState, messageAction] = useFormState<ActionState, FormData>(addTeamMessage, {});
   const [internalNote, setInternalNote] = useState(false);
 
@@ -190,7 +216,16 @@ export function TicketDetailClient({
         <form action={messageAction} className="mt-4 flex flex-col gap-2 border-t border-border pt-4">
           <input type="hidden" name="ticket_id" value={ticket.id} />
           <input type="hidden" name="internal" value={String(internalNote)} />
-          <Textarea name="body" rows={3} placeholder="Escribí una respuesta…" required />
+          <Textarea ref={replyRef} name="body" rows={3} placeholder="Escribí una respuesta…" required />
+          {canUseAi && (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" variant="ghost" onClick={suggestReply} disabled={suggesting} className="px-2 text-xs">
+                <Sparkles size={14} />
+                {suggesting ? "Redactando…" : "Sugerir respuesta con IA"}
+              </Button>
+              {suggestError && <span className="text-xs text-danger">{suggestError}</span>}
+            </div>
+          )}
           <input type="file" name="file" className="text-xs text-text-muted" />
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-2 text-xs text-text-muted">

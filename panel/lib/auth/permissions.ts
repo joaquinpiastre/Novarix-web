@@ -25,7 +25,9 @@ export type Permission =
   | "audit_log.view"
   | "marketing.view_all"
   | "systems.manage"
-  | "tickets.manage_all";
+  | "tickets.manage_all"
+  // Asistente de IA del panel (/assistant y los botones "Generar con IA").
+  | "ai.use";
 
 // Lista explícita de todos los permisos que existen. Se usa en los tests
 // para verificar que ninguno quede sin un caso que lo ejercite (ver
@@ -48,6 +50,7 @@ export const ALL_PERMISSIONS: Permission[] = [
   "marketing.view_all",
   "systems.manage",
   "tickets.manage_all",
+  "ai.use",
 ];
 
 const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
@@ -68,6 +71,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "marketing.view_all",
     "systems.manage",
     "tickets.manage_all",
+    "ai.use",
   ],
   // Ve y gestiona clientes/servicios/equipo y metricas de marketing de TODOS
   // los clientes, pero no sueldos, no cobros de software, no gestion de
@@ -79,6 +83,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "users.create_marketing",
     "marketing.view_all",
     "tickets.manage_all",
+    "ai.use",
   ],
   // Gestiona proyectos y activos tecnicos de todos los clientes
   // (dominio/hosting/SSL, bots de GHL) -- es el area tecnica. Los tickets
