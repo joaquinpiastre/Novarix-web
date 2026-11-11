@@ -232,3 +232,17 @@ Nota: node-postgres devuelve `bigint` como texto (`lib/db.ts` solo convierte `nu
 ### Test de integración
 
 `lib/trends/pipeline.db.test.ts` corre el pipeline completo contra un Postgres vacío, con el proveedor de ejemplo y la IA simulada: caché, tableros, alertas, diagnóstico, límites, presupuesto, retención de YouTube y fechas comerciales. Las instrucciones están en el encabezado del archivo. En `npm test` normal se saltea.
+
+## "Conectar con Facebook" (Inicio de sesión con Facebook para empresas)
+
+- **Dónde está:** en Cliente 360 → Métricas (equipo con acceso al cliente) y en el portal → Métricas. En el portal solo puede conectar el titular (`client_role = owner`), y nunca en modo "ver como cliente".
+- **Flujo:**
+  1. `/api/meta/oauth/start` arma un `state` firmado (HMAC con `SESSION_SECRET`, vence en 15 minutos) con el cliente, la persona y el origen. Después redirige al diálogo de Facebook con el `config_id`, o con `scope` si no hay configuración.
+  2. `/api/meta/oauth/callback` valida el state y que vuelva la misma persona con su sesión. Revalida el acceso al cliente, canjea el `code` (servidor a servidor, con `META_APP_SECRET`) y revisa el token con `debug_token`. Si es un token de usuario corto, lo pasa a uno de larga duración (60 días).
+  3. Guarda o reemplaza la conexión cifrada, agrega solos todos los activos compartidos y lanza la primera sincronización (30 días).
+- **Dominio de vuelta:** solo `panel.novarix.agency`, `clientes.novarix.agency` (o los de `META_OAUTH_EXTRA_HOSTS`) y localhost. Nunca se arma con un Host arbitrario, para evitar un open redirect. Cada dominio usa su propia URL de vuelta, porque la cookie de sesión es por dominio.
+- **Requisitos de Meta** (documentación al 2026-11-11):
+  - Tokens que no vencen: hace falta una configuración de "Inicio de sesión con Facebook para empresas" con tipo de token **usuario del sistema**.
+  - La app tiene que pertenecer a un portfolio de la agencia, distinto del de los clientes.
+  - Para que conecten clientes que no tienen rol en la app: la app tiene que estar en modo producción, con **Acceso avanzado** aprobado en App Review para cada permiso.
+- **Auditoría:** cada conexión queda en `audit_log` (`meta_connections.oauth_connect`).

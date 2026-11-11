@@ -4,6 +4,7 @@ import { requireClient } from "@/lib/auth/requireClient";
 import { query, queryOne } from "@/lib/db";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { formatCurrency } from "@/lib/utils/currency";
+import { MetaConnectCard } from "./MetaConnectCard";
 
 export const dynamic = "force-dynamic";
 
@@ -86,9 +87,9 @@ function Delta({ current, previous }: { current: number; previous: number }) {
 export default async function PortalMetricsPage({
   searchParams,
 }: {
-  searchParams: { period?: string };
+  searchParams: { period?: string; meta?: string };
 }) {
-  const { clientId } = await requireClient();
+  const { clientId, clientRole, isAdminPreview } = await requireClient();
   const period = (["last_30", "this_month", "last_month"].includes(searchParams.period ?? "")
     ? searchParams.period
     : "last_30") as Period;
@@ -142,6 +143,8 @@ export default async function PortalMetricsPage({
           ))}
         </div>
       </div>
+
+      <MetaConnectCard clientId={clientId} isOwner={clientRole === "owner"} isPreview={isAdminPreview} status={searchParams.meta} />
 
       {!hasData ? (
         <Card>

@@ -25,6 +25,7 @@ import type {
   TechAsset,
 } from "@/lib/types/domain";
 import { ClientDetailTabs } from "./ClientDetailTabs";
+import { isMetaOAuthConfigured } from "@/lib/meta/oauth";
 
 export const dynamic = "force-dynamic";
 
@@ -75,7 +76,13 @@ export interface DailySpendPoint {
   results: number;
 }
 
-export default async function ClientDetailPage({ params }: { params: { id: string } }) {
+export default async function ClientDetailPage({
+  params,
+  searchParams,
+}: {
+  params: { id: string };
+  searchParams: { tab?: string };
+}) {
   const access = await requireClientAccess(params.id);
   const { full } = access;
   const canSeeFinance = can(access.profile, "payments_in.manage");
@@ -293,6 +300,8 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
       alerts={alerts}
       companyUsers={companyUsers}
       pendingInvites={pendingInvites}
+      initialTab={searchParams.tab}
+      metaOAuthEnabled={isMetaOAuthConfigured()}
     />
   );
 }

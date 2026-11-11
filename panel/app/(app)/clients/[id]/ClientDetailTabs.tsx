@@ -667,7 +667,11 @@ export function ClientDetailTabs({
   contentComments,
   techAssets,
   ghlBots,
+  initialTab,
+  metaOAuthEnabled,
 }: {
+  initialTab?: string;
+  metaOAuthEnabled: boolean;
   access: ClientAccess;
   client: Client;
   services: ClientServiceRow[];
@@ -780,6 +784,7 @@ export function ClientDetailTabs({
     label: "Métricas",
     content: (
       <MetricsTab
+        metaOAuthEnabled={metaOAuthEnabled}
         clientId={client.id}
         connections={metaConnections}
         assets={metaAssets}
@@ -833,7 +838,7 @@ export function ClientDetailTabs({
           {[client.industry, client.city].filter(Boolean).join(" · ") || "Sin rubro/ciudad cargado"}
         </p>
       </div>
-      <Tabs items={tabs} />
+      <Tabs items={tabs} defaultTab={tabs.some((t) => t.id === initialTab) ? initialTab : undefined} />
     </div>
   );
 }

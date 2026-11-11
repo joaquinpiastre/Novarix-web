@@ -63,6 +63,17 @@ APIFY_TOKEN=
 TRENDS_MOCK_PROVIDER=off
 # Opcional: versión de la Graph API de Meta (por defecto v26.0)
 META_GRAPH_VERSION=
+
+# ===== "Conectar con Facebook" (Inicio de sesión con Facebook para empresas) =====
+# App de Meta (developers.facebook.com > Novarix Panel > Configuración > Básica)
+META_APP_ID=
+META_APP_SECRET=
+# ID de la configuración de "Inicio de sesión con Facebook para empresas"
+# (token de usuario del sistema = no vence). Sin esto se usa el login clásico
+# con token de 60 días.
+META_LOGIN_CONFIG_ID=
+# Opcional: dominios extra permitidos para la vuelta de Facebook (coma separados)
+META_OAUTH_EXTRA_HOSTS=
 ```
 
 - `ENCRYPTION_KEY`: cifra secretos guardados en la base (hoy: el secreto TOTP de 2FA; a futuro: tokens de integraciones como Meta). Si la perdés, lo cifrado con ella queda irrecuperable.

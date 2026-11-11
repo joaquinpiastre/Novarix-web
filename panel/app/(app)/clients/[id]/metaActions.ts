@@ -5,6 +5,7 @@ import { query, queryOne } from "@/lib/db";
 import { requireClientAccess } from "@/lib/auth/requireClientAccess";
 import { encrypt, decrypt } from "@/lib/crypto/encryption";
 import { metaGet, MetaApiError } from "@/lib/meta/client";
+import { discoverMetaAssets } from "@/lib/meta/assets";
 import { syncConnection } from "@/lib/meta/sync";
 import { recordAudit } from "@/lib/audit/log";
 import { getClientIp } from "@/lib/utils/request";
@@ -96,38 +97,7 @@ export async function listAvailableMetaAssets(
   if (!connection) return { error: "Conexión no encontrada." };
 
   const token = decrypt(connection.access_token);
-  const assets: AvailableAsset[] = [];
-
-  try {
-    const adAccounts = await metaGet<{ data: { id: string; name: string }[] }>(
-      "me/adaccounts",
-      token,
-      { fields: "id,name" }
-    );
-    for (const a of adAccounts.data ?? []) {
-      assets.push({ type: "ad_account", external_id: a.id.replace(/^act_/, ""), name: a.name });
-    }
-  } catch {
-    // seguimos -- puede que el token no tenga permiso de ads, no es fatal.
-  }
-
-  try {
-    const pages = await metaGet<{
-      data: { id: string; name: string; instagram_business_account?: { id: string; username: string } }[];
-    }>("me/accounts", token, { fields: "id,name,instagram_business_account{id,username}" });
-    for (const p of pages.data ?? []) {
-      assets.push({ type: "page", external_id: p.id, name: p.name });
-      if (p.instagram_business_account) {
-        assets.push({
-          type: "instagram",
-          external_id: p.instagram_business_account.id,
-          name: `@${p.instagram_business_account.username}`,
-        });
-      }
-    }
-  } catch {
-    // idem -- puede que falte el permiso de paginas.
-  }
+  const assets: AvailableAsset[] = await discoverMetaAssets(token);
 
   if (assets.length === 0) {
     return { error: "El token no tiene acceso a ninguna cuenta publicitaria ni página." };

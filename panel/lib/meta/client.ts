@@ -7,7 +7,7 @@ import "server-only";
 // https://developers.facebook.com/docs/graph-api/changelog/versions
 // Override por env (META_GRAPH_VERSION) por si hace falta volver atras rapido.
 const GRAPH_VERSION = process.env.META_GRAPH_VERSION?.trim() || "v26.0";
-const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_VERSION}`;
+export const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_VERSION}`;
 
 export class MetaApiError extends Error {
   constructor(
