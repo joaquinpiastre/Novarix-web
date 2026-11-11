@@ -180,7 +180,7 @@ export async function competitorTopPosts(competitorId: string): Promise<{ cards?
   const { access, error } = await gate(comp.client_id, false);
   if (error) return { error };
   if (!comp.ig_username) return { error: "Cargale el usuario de Instagram para ver sus posts." };
-  if (!isInstagramConfigured()) return { error: "Falta configurar la cuenta de Instagram de búsqueda (TRENDS_IG_CONNECTION_ID)." };
+  if (!isInstagramConfigured()) return { error: "Falta configurar la cuenta de Instagram de búsqueda (TRENDS_IG_ACCESS_TOKEN)." };
 
   try {
     const bd = await businessDiscovery(comp.ig_username, { profileId: access.userId, clientId: comp.client_id });

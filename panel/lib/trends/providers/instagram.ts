@@ -25,8 +25,12 @@ import { ProviderError, type ProviderRunContext, type TrendProvider } from "./ty
 //   - Uso permitido para marketing: solo con datos agregados/anonimos -> se usa
 //     para detectar temas y formatos, no para perfilar personas.
 //
-// Se busca desde UNA cuenta de Instagram Business propia (la de Novarix),
-// configurada con TRENDS_IG_CONNECTION_ID (+ opcional TRENDS_IG_USER_ID).
+// Se busca desde UNA cuenta de Instagram Business propia. Dos formas de
+// configurarla (la primera que este gana):
+//   1. TRENDS_IG_ACCESS_TOKEN: un token de Meta directo (ideal: de usuario del
+//      sistema, no vence). La cuenta de Instagram se detecta sola (primera
+//      pagina con IG vinculado), o se fija con TRENDS_IG_USER_ID.
+//   2. TRENDS_IG_CONNECTION_ID: una conexion de Meta cargada en el panel.
 
 const HASHTAG_WEEKLY_LIMIT = 28; // margen de 2 sobre el limite real de 30
 const MAX_ACCOUNTS_PER_SEARCH = 6;
@@ -38,16 +42,41 @@ interface IgSearchIdentity {
 }
 
 export function isInstagramConfigured(): boolean {
-  return Boolean(process.env.TRENDS_IG_CONNECTION_ID);
+  return Boolean(process.env.TRENDS_IG_ACCESS_TOKEN?.trim() || process.env.TRENDS_IG_CONNECTION_ID?.trim());
 }
 
 export function isHashtagSearchEnabled(): boolean {
   return process.env.TRENDS_IG_HASHTAG_SEARCH === "on";
 }
 
+let detectedIgUserId: string | null = null;
+
+/** Primera cuenta de Instagram Business vinculada a una pagina a la que el token tiene acceso. */
+async function detectIgUserId(token: string): Promise<string> {
+  if (detectedIgUserId) return detectedIgUserId;
+  const pages = await metaGet<{ data: { instagram_business_account?: { id: string } }[] }>("me/accounts", token, {
+    fields: "instagram_business_account{id,username}",
+    limit: "100",
+  });
+  const id = pages.data?.find((p) => p.instagram_business_account)?.instagram_business_account?.id;
+  if (!id) {
+    throw new ProviderError(
+      "El token de TRENDS_IG_ACCESS_TOKEN no tiene ninguna página con Instagram profesional vinculado (o le falta el permiso pages_show_list)."
+    );
+  }
+  detectedIgUserId = id;
+  return id;
+}
+
 async function identity(): Promise<IgSearchIdentity> {
+  const directToken = process.env.TRENDS_IG_ACCESS_TOKEN?.trim();
+  if (directToken) {
+    const igUserId = process.env.TRENDS_IG_USER_ID?.trim() || (await detectIgUserId(directToken));
+    return { token: directToken, igUserId };
+  }
+
   const connectionId = process.env.TRENDS_IG_CONNECTION_ID;
-  if (!connectionId) throw new ProviderError("Falta TRENDS_IG_CONNECTION_ID (la conexión de Meta desde la que se busca).");
+  if (!connectionId) throw new ProviderError("Falta configurar Instagram (TRENDS_IG_ACCESS_TOKEN o TRENDS_IG_CONNECTION_ID).");
   const conn = await queryOne<{ access_token: string; status: string }>(
     "select access_token, status from meta_connections where id = $1",
     [connectionId]

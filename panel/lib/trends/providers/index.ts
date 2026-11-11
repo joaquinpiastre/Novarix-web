@@ -56,7 +56,7 @@ export function providerStatuses(): ProviderStatus[] {
           : "Solo cuentas referentes (hashtags pendientes de App Review)"
         : mock
           ? "Datos de ejemplo"
-          : "Falta TRENDS_IG_CONNECTION_ID",
+          : "Falta TRENDS_IG_ACCESS_TOKEN",
     },
     {
       platform: "tiktok",

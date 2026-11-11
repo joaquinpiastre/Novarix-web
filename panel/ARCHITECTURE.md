@@ -221,7 +221,7 @@ Nota: node-postgres devuelve `bigint` como texto (`lib/db.ts` solo convierte `nu
 - El alcance se resuelve en `lib/trends/access.ts`: búsquedas propias o de clientes del alcance, y tableros de clientes del alcance o creados por la persona.
 - "Compartir con el cliente" crea la pieza en estado `aprobacion_cliente`, con el mismo circuito de aprobación que ya tiene el portal.
 - Toda escritura queda en `audit_log` (`trends.*`, `ideas.*`, `competitors.*`, `diagnostic.generate`, `usage.settings.update`).
-- Las claves (`YOUTUBE_API_KEY`, `ANTHROPIC_API_KEY`, `APIFY_TOKEN`, los tokens de Meta) solo se leen en el servidor.
+- Las claves (`YOUTUBE_API_KEY`, `ANTHROPIC_API_KEY`, `APIFY_TOKEN`, `TRENDS_IG_ACCESS_TOKEN`, los tokens de Meta) solo se leen en el servidor. Instagram se configura con `TRENDS_IG_ACCESS_TOKEN` (la cuenta se detecta sola) o con `TRENDS_IG_CONNECTION_ID`.
 
 ### Jobs nuevos (pg-boss, en el mismo proceso)
 

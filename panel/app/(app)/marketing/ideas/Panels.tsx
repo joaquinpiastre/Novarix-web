@@ -156,7 +156,7 @@ export function CompetitorsPanel({
         <p className="mt-3 text-xs text-text-muted">
           Los posts se leen con Business Discovery de Instagram (solo cuentas Business o Creator). La API de la Biblioteca de Anuncios de Meta solo devuelve anuncios
           comerciales que llegaron a la UE o el Reino Unido; para Argentina abrimos la Biblioteca filtrada por anunciante.
-          {!igConfigured && " Falta configurar la cuenta de Instagram de búsqueda (TRENDS_IG_CONNECTION_ID)."}
+          {!igConfigured && " Falta configurar la cuenta de Instagram de búsqueda (TRENDS_IG_ACCESS_TOKEN)."}
         </p>
       </Card>
 
