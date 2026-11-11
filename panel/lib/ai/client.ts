@@ -5,14 +5,31 @@ import Anthropic from "@anthropic-ai/sdk";
 // apagada (las pantallas muestran un aviso en vez de romper), igual que
 // Resend/Sentry.
 
-export const AI_MODEL = "claude-opus-5-5";
+// Configurable por env (ANTHROPIC_MODEL) para poder cambiar de modelo sin
+// tocar codigo. Por defecto, Claude Opus 5.5.
+export const AI_MODEL = process.env.ANTHROPIC_MODEL?.trim() || "claude-opus-5-5";
 
-// Si el modelo principal declina un pedido por sus filtros de seguridad, la
-// API reintenta sola con otro modelo dentro de la misma llamada.
-export const AI_FALLBACK: { betas: Anthropic.Beta.AnthropicBeta[]; fallbacks: "default" } = {
-  betas: ["server-side-fallback-2026-07-01"],
-  fallbacks: "default",
-};
+// Modelos que aceptan el reintento automatico del lado del servidor
+// (`fallbacks: "default"`). Si el modelo configurado no esta en la lista
+// (ej. un Haiku), no se manda el parametro: la API lo rechazaria.
+const SERVER_FALLBACK_MODELS = new Set([
+  "claude-opus-5-5",
+  "claude-opus-5",
+  "claude-sonnet-5-5",
+  "claude-fable-5-2",
+  "claude-fable-5-1",
+]);
+
+type FallbackParams = { betas: Anthropic.Beta.AnthropicBeta[]; fallbacks: "default" } | Record<string, never>;
+
+/** Si el modelo principal declina un pedido por sus filtros de seguridad, la API reintenta sola con otro modelo dentro de la misma llamada. */
+export function aiFallbackFor(model: string): FallbackParams {
+  return SERVER_FALLBACK_MODELS.has(model)
+    ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" }
+    : {};
+}
+
+export const AI_FALLBACK = aiFallbackFor(AI_MODEL);
 
 let client: Anthropic | null = null;
 

@@ -15,6 +15,9 @@ import {
   Ticket,
   CalendarDays,
   Sparkles,
+  Radar,
+  Lightbulb,
+  Gauge,
   type LucideIcon,
 } from "lucide-react";
 
@@ -55,6 +58,19 @@ export const NAV_LINKS: NavLink[] = [
     permission: "marketing.view_all",
     // marketing (no admin) ve solo lo que tiene delegado, en modo lectura.
     extraCheck: (profile) => profile.role === "marketing",
+  },
+  {
+    href: "/marketing/radar",
+    label: "Radar viral",
+    icon: Radar,
+    // marketing lo ve acotado a sus clientes asignados (lib/trends/access.ts).
+    permission: "trends.use",
+  },
+  {
+    href: "/marketing/ideas",
+    label: "Ideas",
+    icon: Lightbulb,
+    permission: "trends.use",
   },
   {
     href: "/assistant",
@@ -109,6 +125,12 @@ export const NAV_LINKS: NavLink[] = [
     label: "Usuarios",
     icon: Users,
     permission: ["users.manage", "users.create_marketing"],
+  },
+  {
+    href: "/admin/consumo",
+    label: "Consumo IA",
+    icon: Gauge,
+    permission: "usage.view",
   },
   {
     href: "/account",

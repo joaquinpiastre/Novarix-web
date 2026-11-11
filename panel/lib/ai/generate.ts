@@ -3,7 +3,9 @@ import { z } from "zod";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { query, queryOne } from "@/lib/db";
 import { formatLabel, networkLabel } from "@/lib/marketing/content";
+import { recordAiUsage, type UsageContext } from "@/lib/usage/record";
 import { AI_FALLBACK, AI_MODEL, getAiClient } from "./client";
+import { buildClientContext } from "./clientContext";
 
 // Generaciones puntuales (una sola llamada, sin herramientas): borrador de
 // guion+copy para una pieza de contenido, y borrador de respuesta a un ticket.
@@ -22,38 +24,11 @@ export interface ContentDraftInput {
   script?: string | null;
 }
 
-async function clientContext(clientId: string): Promise<string> {
-  const client = await queryOne<{ name: string; industry: string | null; city: string | null; website: string | null }>(
-    "select name, industry, city, website from clients where id = $1",
-    [clientId]
-  );
-  const kit = await queryOne<{ tone_of_voice: string | null; color_palette: string | null; fonts: string | null }>(
-    "select tone_of_voice, color_palette, fonts from brand_kits where client_id = $1",
-    [clientId]
-  );
-  const recent = await query<{ title: string; format: string; copy: string | null }>(
-    `select title, format, copy from content_items
-     where client_id = $1 and copy is not null
-     order by created_at desc limit 5`,
-    [clientId]
-  );
-  const lines = [
-    `Cliente: ${client?.name ?? "desconocido"}`,
-    client?.industry ? `Rubro: ${client.industry}` : null,
-    client?.city ? `Ciudad: ${client.city}` : null,
-    client?.website ? `Web: ${client.website}` : null,
-    kit?.tone_of_voice ? `Tono de voz de la marca: ${kit.tone_of_voice}` : null,
-    recent.length
-      ? `Copys recientes del cliente (para mantener el estilo):\n${recent
-          .map((r) => `- [${formatLabel(r.format)}] ${r.title}: ${r.copy}`)
-          .join("\n")}`
-      : null,
-  ];
-  return lines.filter(Boolean).join("\n");
-}
-
-export async function generateContentDraft(input: ContentDraftInput): Promise<{ script: string; copy: string }> {
-  const context = await clientContext(input.clientId);
+export async function generateContentDraft(
+  input: ContentDraftInput,
+  usageCtx: UsageContext = {}
+): Promise<{ script: string; copy: string }> {
+  const context = await buildClientContext(input.clientId, { recentCopies: true });
   const response = await getAiClient().beta.messages.parse({
     model: AI_MODEL,
     max_tokens: 16000,
@@ -84,13 +59,14 @@ export async function generateContentDraft(input: ContentDraftInput): Promise<{ 
     ],
   });
 
+  await recordAiUsage("calendar.draft", AI_MODEL, response.usage, { ...usageCtx, clientId: input.clientId });
   if (response.stop_reason === "refusal" || !response.parsed_output) {
     throw new Error("La IA no pudo generar este contenido.");
   }
   return response.parsed_output;
 }
 
-export async function suggestTicketReply(ticketId: string): Promise<string> {
+export async function suggestTicketReply(ticketId: string, usageCtx: UsageContext = {}): Promise<string> {
   const ticket = await queryOne<{ title: string; description: string | null; client_name: string; type: string }>(
     `select t.title, t.description, c.name as client_name, t.ticket_type::text as type
      from support_tickets t join clients c on c.id = t.client_id where t.id = $1`,
@@ -127,6 +103,7 @@ export async function suggestTicketReply(ticketId: string): Promise<string> {
     ],
   });
 
+  await recordAiUsage("tickets.reply", AI_MODEL, response.usage, usageCtx);
   if (response.stop_reason === "refusal") throw new Error("La IA no pudo redactar esta respuesta.");
   return response.content
     .flatMap((b) => (b.type === "text" ? [b.text] : []))

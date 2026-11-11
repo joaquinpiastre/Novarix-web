@@ -2,7 +2,11 @@ import "server-only";
 
 // Graph API de Meta. La version se fija acá -- subirla cuando Meta la
 // deprecie (avisan con bastante anticipación en developers.facebook.com).
-const GRAPH_VERSION = "v21.0";
+// 2026-11-11: v21.0 vence el 21/01/2027; se pasa a v26.0 (lanzada el
+// 29/07/2026, la ultima publicada). Ver
+// https://developers.facebook.com/docs/graph-api/changelog/versions
+// Override por env (META_GRAPH_VERSION) por si hace falta volver atras rapido.
+const GRAPH_VERSION = process.env.META_GRAPH_VERSION?.trim() || "v26.0";
 const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_VERSION}`;
 
 export class MetaApiError extends Error {

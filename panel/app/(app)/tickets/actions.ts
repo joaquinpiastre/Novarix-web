@@ -220,7 +220,7 @@ export async function suggestReplyAction(ticketId: string): Promise<{ text?: str
   if (!can(profile, "ai.use")) return { error: "No tenés acceso a la IA." };
   if (!isAiConfigured()) return { error: "La IA todavía no está configurada (falta ANTHROPIC_API_KEY)." };
   try {
-    return { text: await suggestTicketReply(ticketId) };
+    return { text: await suggestTicketReply(ticketId, { profileId: profile.id }) };
   } catch (err) {
     return { error: aiErrorMessage(err) };
   }

@@ -20,6 +20,11 @@ export async function register() {
     startTicketSlaJob().catch((err) => {
       console.error(JSON.stringify({ level: "error", msg: "startTicketSlaJob failed", err: String(err) }));
     });
+
+    const { startTrendJobs } = await import("./lib/jobs/trendJobs");
+    startTrendJobs().catch((err) => {
+      console.error(JSON.stringify({ level: "error", msg: "startTrendJobs failed", err: String(err) }));
+    });
   }
 
   if (process.env.NEXT_RUNTIME === "edge") {

@@ -27,6 +27,8 @@ describe("navLinksFor", () => {
       "/clients",
       "/marketing",
       "/calendar",
+      "/marketing/radar",
+      "/marketing/ideas",
       "/assistant",
       "/systems",
       "/payments/out",
@@ -36,6 +38,7 @@ describe("navLinksFor", () => {
       "/tasks",
       "/reminders",
       "/admin/users",
+      "/admin/consumo",
       "/account",
     ]);
   });
@@ -51,11 +54,13 @@ describe("navLinksFor", () => {
     ]);
   });
 
-  it("marketing ve clientes y su calendario (filtrado a lo suyo en la página), sin IA ni cobros/pagos de otros", () => {
+  it("marketing ve clientes, su calendario y el Radar/ideas (filtrado a sus clientes), sin asistente ni cobros/pagos de otros", () => {
     expect(hrefs(profile("marketing"))).toEqual([
       "/dashboard",
       "/clients",
       "/calendar",
+      "/marketing/radar",
+      "/marketing/ideas",
       "/payments/out",
       "/tickets",
       "/tasks",
@@ -69,6 +74,8 @@ describe("navLinksFor", () => {
       "/clients",
       "/marketing",
       "/calendar",
+      "/marketing/radar",
+      "/marketing/ideas",
       "/assistant",
       "/payments/out",
       "/tickets",

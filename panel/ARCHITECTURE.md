@@ -150,3 +150,85 @@ pedido ──► /assistant (requirePermission "ai.use": admin, marketing_admin)
 - La lista de herramientas que se le ofrece al modelo ya viene filtrada por permisos, y además se revalida en cada ejecución (el modelo no puede "pedir" una que no se le ofreció).
 - No hay herramientas para borrar, ni para usuarios, pagos, configuración o código: la IA no tiene forma de hacerlo.
 - Los textos que vienen de la base (tickets, comentarios de clientes) se tratan como datos; el prompt de sistema lo explicita para reducir riesgo de prompt injection, y de todos modos el alcance máximo es el de los permisos de la persona.
+
+## Radar viral, diagnóstico de videos y caja de ideas (migraciones 0020–0022)
+
+### APIs verificadas en la documentación oficial (2026-11-11)
+
+| API | Qué se confirmó | Consecuencia en el diseño |
+|---|---|---|
+| YouTube Data API v3 | Cuota de 10.000 unidades por día; `search.list` cuesta 1 unidad pero tiene **su propio tope de 100 llamadas por día**; `videos.list`/`channels.list` cuestan 1 unidad cada una (hasta 50 ids). `order=viewCount`, `publishedAfter`, `regionCode`, `relevanceLanguage`, `videoDuration=short` (< 4 min). **No hay filtro de Shorts.** | Tope propio `YOUTUBE_SEARCH_DAILY_CAP` (90 por defecto), contado en `provider_usage` por día del Pacífico. Shorts = `short` + duración real ≤ `max_duration_seconds`. |
+| Políticas de YouTube API Services | Estadísticas de terceros: máximo 30 días sin refrescar; no reemplazar números de YouTube por cálculos propios; embeds respetando Made for Kids. | `lib/trends/maintenance.ts`: refresca a los 25 días lo que está en tableros y borra lo demás a los 30. Los scores se muestran como "métrica Novarix" al lado del número original. Embed por `youtube-nocookie.com`. |
+| IG Hashtag Search (`ig_hashtag_search`, `top_media`, `recent_media`) | Requiere la función **Instagram Public Content Access** (App Review + verificación del negocio). Límite de **30 hashtags únicos cada 7 días**. `top_media` y `recent_media` (últimas 24 h) devuelven likes y comentarios, **sin vistas ni usuario**. Uso para marketing: solo datos agregados o anónimos. | Apagado por defecto (`TRENDS_IG_HASHTAG_SEARCH`). Límite controlado en `ig_hashtag_queries` (tope propio de 28). Esos videos no tienen outlier ni velocidad: el peso se reparte entre los componentes que sí hay. |
+| IG Business Discovery | Permisos `instagram_basic`, `instagram_manage_insights`, `pages_read_engagement`. Solo cuentas Business/Creator. Devuelve `followers_count` y, por media, `like_count`, `comments_count` y `view_count` (este último **solo** por Business Discovery). | Fuente principal de Instagram: cuentas referentes del plan y competidores. Outlier = vistas ÷ promedio de vistas de la cuenta. |
+| IG Media Insights (nuestros reels) | REELS: `views`, `reach`, `saved`, `shares`, `likes`, `comments`, `total_interactions`, `ig_reels_avg_watch_time`, `ig_reels_video_view_total_time` (varios marcados "en desarrollo"). | `syncInstagramMedia` en `lib/meta/sync.ts` llena `social_posts` (antes la tabla existía pero no se llenaba). |
+| Graph API (versiones) | v21.0 vence el 21/01/2027; la última es v26.0 (29/07/2026). | Se pasó a v26.0 (`META_GRAPH_VERSION` para volver atrás si hace falta). **Probar la sync de Meta después del deploy.** |
+| oEmbed de Instagram | `GET /instagram_oembed`, hasta 1.000 pedidos por hora. La página no aclara si hace falta la función "Meta oEmbed Read". | No se usa: los reels se muestran con el iframe `/embed/` de la publicación o link al original. |
+| Meta Ad Library API (`ads_archive`) | Fuera de la UE/Reino Unido solo devuelve anuncios políticos o de temas sociales. | Para Argentina, link directo a la Biblioteca filtrada por página o nombre del anunciante. |
+| TikTok Research API | Solo instituciones académicas o sin fines de lucro, independientes de intereses comerciales. **Una agencia no califica.** | No se usa. |
+| TikTok oEmbed / Embed Player | oEmbed sin autenticación y sin métricas; "Embed Videos" se va a deprecar. Embed Player: `tiktok.com/player/v1/{id}`. | Links manuales con oEmbed (texto, autor, miniatura) y Embed Player para mostrar el video. Las métricas se cargan a mano (opcional). |
+| Apify `clockworks/tiktok-scraper` | Desde USD 1,70 cada 1.000 resultados; los filtros de fecha y orden se cobran aparte. Trae vistas, likes, comentarios, compartidos, guardados y seguidores. | Detrás de `TRENDS_TIKTOK_PROVIDER=apify`, **apagado**. Ver riesgos abajo. |
+
+### TikTok vía terceros: riesgos (decisión pendiente de Novarix)
+
+- **Términos de uso**: es scraping, y los términos de TikTok lo prohíben. El riesgo legal y reputacional es de quien usa los datos, no de Apify.
+- **Estabilidad**: se rompe cuando TikTok cambia su web, y no tiene SLA sobre los datos.
+- **Costo**: unos USD 0,03 a 0,05 por búsqueda con 20 resultados por consulta, más los filtros cobrados. Se registra en `provider_usage` y cuenta para el presupuesto mensual.
+
+### Flujo de una búsqueda
+
+```
+prompt + filtros ──► createSearch (server action)
+                       ├─ límites (por rol y día, presupuesto mensual)
+                       └─ planSearch (Claude, salida JSON validada con zod) ──► status "ready"
+plan editable ──► runSearch ──► ¿mismo plan en las últimas N horas? → copia resultados (caché)
+                       └─► job pg-boss "trend-search" ──► runSearchJob
+                              proveedores en paralelo → dedup (plataforma + id) → trend_videos (+ historial de métricas)
+                              → scores propios → relevancia IA (lote) → descarta irrelevantes
+                              → análisis IA del top N (con visión sobre la miniatura; caché por video y cliente)
+                              → patrones del top → "done" + costo
+```
+
+### Score (transparente: `lib/trends/score.ts`, con tests)
+
+- **Outlier**: vistas ÷ promedio de vistas de la cuenta (o ÷ seguidores). Escala logarítmica: 1x ≈ 18, 10x ≈ 61, 50x o más = 100.
+- **Velocidad**: vistas por día desde la publicación, en escala logarítmica relativa al video más rápido de la misma búsqueda.
+- **Engagement**: (likes + comentarios + compartidos + guardados) ÷ vistas. Un 10% equivale a 100 puntos.
+- **Relevancia**: de 0 a 100, según la IA. Por debajo de 35 el video se descarta.
+- **Final**: promedio ponderado con los pesos de `/admin/consumo`. Si falta un componente, su peso se reparte entre los demás.
+
+### Modelo de datos
+
+- `trend_settings`: una sola fila con pesos, TTL del caché, top N, límites por rol, presupuesto y el aviso del mes.
+- `trend_videos`: clave única (plataforma, id externo), sin archivos de video; `metrics_history` guarda hasta 30 puntos.
+- `trend_searches`, `trend_search_results` y `trend_analyses`: el análisis tiene clave única (video, cliente), así que se reutiliza entre búsquedas.
+- `swipe_boards` y `swipe_items`: tableros por cliente o temáticos.
+- `saved_searches`: alertas que revisa un job cada hora; avisan solo los videos que no aparecieron en corridas anteriores.
+- `provider_usage`: cada llamada a YouTube, Meta, Apify o Claude, con costo estimado y tokens, por persona, cliente y búsqueda.
+- `ig_hashtag_queries`: ventana de 7 días del límite de Meta.
+- `social_posts` (columnas nuevas) y `video_diagnostics`: el diagnóstico.
+- `idea_bank`, `competitors`, `commercial_dates`, `commercial_date_notices` y `strategy_chats`: la caja de ideas.
+
+Nota: node-postgres devuelve `bigint` como texto (`lib/db.ts` solo convierte `numeric`). El código nuevo pasa las métricas a número con `numifyVideo`/`toNumberOrNull` (en `lib/trends/store.ts`).
+
+### Permisos
+
+| | admin | marketing_admin | marketing | programmer | client |
+|---|---|---|---|---|---|
+| `trends.use` (Radar, diagnóstico, ideas) | ✅ todo | ✅ todo | ✅ solo clientes de su `client_team` (cliente obligatorio) | ❌ | ❌ |
+| `usage.view` (`/admin/consumo`) | ✅ | ❌ | ❌ | ❌ | ❌ |
+
+- El alcance se resuelve en `lib/trends/access.ts`: búsquedas propias o de clientes del alcance, y tableros de clientes del alcance o creados por la persona.
+- "Compartir con el cliente" crea la pieza en estado `aprobacion_cliente`, con el mismo circuito de aprobación que ya tiene el portal.
+- Toda escritura queda en `audit_log` (`trends.*`, `ideas.*`, `competitors.*`, `diagnostic.generate`, `usage.settings.update`).
+- Las claves (`YOUTUBE_API_KEY`, `ANTHROPIC_API_KEY`, `APIFY_TOKEN`, los tokens de Meta) solo se leen en el servidor.
+
+### Jobs nuevos (pg-boss, en el mismo proceso)
+
+- `trend-search`: corre cada búsqueda, con vencimiento a los 20 minutos y sin reintentos.
+- `trend-saved-search-alerts`: corre cada hora, en el minuto 15.
+- `trend-maintenance-daily`: corre a las 7:30. Aplica la retención de 30 días de YouTube y avisa de las fechas comerciales con 21 días de anticipación (`COMMERCIAL_DATE_LEAD_DAYS`).
+
+### Test de integración
+
+`lib/trends/pipeline.db.test.ts` corre el pipeline completo contra un Postgres vacío, con el proveedor de ejemplo y la IA simulada: caché, tableros, alertas, diagnóstico, límites, presupuesto, retención de YouTube y fechas comerciales. Las instrucciones están en el encabezado del archivo. En `npm test` normal se saltea.

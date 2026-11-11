@@ -10,6 +10,9 @@ declare global {
 export const META_SYNC_JOB = "meta-sync-daily";
 export const TICKET_SLA_CHECK_JOB = "ticket-sla-check";
 export const TICKET_DAILY_DIGEST_JOB = "ticket-daily-digest";
+export const TREND_SEARCH_JOB = "trend-search";
+export const TREND_ALERTS_JOB = "trend-saved-search-alerts";
+export const TREND_MAINTENANCE_JOB = "trend-maintenance-daily";
 
 let starting: Promise<PgBoss> | null = null;
 
@@ -36,6 +39,9 @@ export async function getBoss(): Promise<PgBoss> {
     await boss.createQueue(META_SYNC_JOB);
     await boss.createQueue(TICKET_SLA_CHECK_JOB);
     await boss.createQueue(TICKET_DAILY_DIGEST_JOB);
+    await boss.createQueue(TREND_SEARCH_JOB);
+    await boss.createQueue(TREND_ALERTS_JOB);
+    await boss.createQueue(TREND_MAINTENANCE_JOB);
     global.__pgBoss = boss;
     log.info("pg-boss iniciado");
     return boss;

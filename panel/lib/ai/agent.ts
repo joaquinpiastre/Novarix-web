@@ -3,6 +3,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { query, queryOne } from "@/lib/db";
 import { ROLE_LABELS } from "@/lib/types/domain";
 import { log } from "@/lib/log";
+import { recordAiUsage } from "@/lib/usage/record";
 import { AI_FALLBACK, AI_MODEL, getAiClient } from "./client";
 import { runTool, TOOL_LABELS, toolDefinitionsFor, WRITE_TOOLS, type ToolContext } from "./tools";
 
@@ -107,6 +108,7 @@ export async function runAssistantTurn(
         messages,
       });
       inputTokens += response.usage.input_tokens + (response.usage.cache_read_input_tokens ?? 0);
+      await recordAiUsage("assistant.turn", AI_MODEL, response.usage, { profileId: ctx.userId });
       outputTokens += response.usage.output_tokens;
       messages.push({ role: "assistant", content: response.content });
 

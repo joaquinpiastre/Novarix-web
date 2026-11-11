@@ -38,6 +38,28 @@ RESEND_API_KEY=
 RESEND_FROM=
 # Asistente de IA y botones "Generar con IA" (console.anthropic.com)
 ANTHROPIC_API_KEY=
+# Opcional: modelo de Claude (por defecto claude-opus-5-5)
+ANTHROPIC_MODEL=
+
+# ===== Radar viral (todas opcionales; sin ellas el proveedor queda apagado) =====
+# YouTube Data API v3 (Google Cloud Console > APIs > YouTube Data API v3 > Credenciales > Clave de API)
+YOUTUBE_API_KEY=
+# Tope propio de búsquedas por día (Google permite 100 search.list por día)
+YOUTUBE_SEARCH_DAILY_CAP=90
+# Conexión de Meta (id de meta_connections) desde la que se busca en Instagram:
+# la de la cuenta de Instagram Business de Novarix.
+TRENDS_IG_CONNECTION_ID=
+# Opcional: id de la cuenta de Instagram Business (si no, se toma el activo instagram de esa conexión)
+TRENDS_IG_USER_ID=
+# "on" solo cuando Meta apruebe "Instagram Public Content Access" (App Review)
+TRENDS_IG_HASHTAG_SEARCH=off
+# TikTok: "manual" (links pegados a mano) o "apify" (terceros, ver riesgos en ARCHITECTURE.md)
+TRENDS_TIKTOK_PROVIDER=manual
+APIFY_TOKEN=
+# Datos de ejemplo para desarrollo (nunca en producción)
+TRENDS_MOCK_PROVIDER=off
+# Opcional: versión de la Graph API de Meta (por defecto v26.0)
+META_GRAPH_VERSION=
 ```
 
 - `ENCRYPTION_KEY`: cifra secretos guardados en la base (hoy: el secreto TOTP de 2FA; a futuro: tokens de integraciones como Meta). Si la perdés, lo cifrado con ella queda irrecuperable.
@@ -148,6 +170,15 @@ Disponible **solo para `admin` y `marketing_admin`** (permiso `ai.use`; `marketi
 - **Permisos**: cada herramienta exige el mismo permiso que la pantalla equivalente, y se revalida al ejecutarla. Un `marketing_admin` no puede, vía IA, ver finanzas ni crear tareas, igual que en el panel.
 - **Trazabilidad**: toda modificación queda en `audit_log` como `ai.<herramienta>`, con quién la pidió. Las conversaciones son privadas de cada persona (`ai_conversations`) y guardan cuántos tokens se usaron.
 - **Otros usos de la IA**: el botón "Generar guion y copy con IA" en cada pieza de contenido (usa el tono de marca y los copys recientes del cliente) y "Sugerir respuesta con IA" en los tickets (solo arma el borrador; nada se envía solo).
+
+## Radar viral, diagnóstico e ideas (`/marketing/radar`, `/marketing/diagnostico`, `/marketing/ideas`)
+
+- **Radar viral**: prompt en lenguaje natural → la IA arma un plan de búsqueda (editable) → busca en YouTube Shorts / Instagram Reels / TikTok en un job de pg-boss → scoring propio (outlier, velocidad, engagement, relevancia) → análisis IA del top N y patrones en común. Guardado en tableros, "Convertir en idea" (crea la pieza en el calendario) y alertas (búsquedas que se repiten solas y avisan solo lo nuevo).
+- **Diagnóstico**: nuestros reels (sincronizados de Meta) contra el promedio de la cuenta y contra los referentes del Radar, con reporte IA y 5 cambios accionables.
+- **Caja de ideas**: ideas por pilar, ganchos, guionista, reciclador, hashtags, competidores (Business Discovery + Biblioteca de Anuncios), fechas comerciales de Argentina/Mendoza con aviso anticipado, ideas de Ads, chat de estrategia y banco de ideas por cliente.
+- **Consumo** (`/admin/consumo`, solo admin): costo estimado por proveedor, persona y cliente; límites diarios por rol; presupuesto mensual con aviso al 80%.
+- Nunca se descargan videos de terceros: se muestran con el reproductor oficial (embed) o con link al original.
+- Detalle de proveedores, verificación de cada API, riesgos y modelo de datos: ver `ARCHITECTURE.md`.
 
 ## Portal de clientes
 

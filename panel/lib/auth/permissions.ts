@@ -27,7 +27,13 @@ export type Permission =
   | "systems.manage"
   | "tickets.manage_all"
   // Asistente de IA del panel (/assistant y los botones "Generar con IA").
-  | "ai.use";
+  | "ai.use"
+  // Radar Viral, diagnostico de videos y caja de ideas (/marketing/radar,
+  // /marketing/diagnostico, /marketing/ideas). `marketing` lo tiene, pero
+  // acotado a sus clientes asignados (ver lib/trends/access.ts).
+  | "trends.use"
+  // Panel de consumo de proveedores/IA, limites y presupuesto (/admin/consumo).
+  | "usage.view";
 
 // Lista explícita de todos los permisos que existen. Se usa en los tests
 // para verificar que ninguno quede sin un caso que lo ejercite (ver
@@ -51,6 +57,8 @@ export const ALL_PERMISSIONS: Permission[] = [
   "systems.manage",
   "tickets.manage_all",
   "ai.use",
+  "trends.use",
+  "usage.view",
 ];
 
 const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
@@ -72,6 +80,8 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "systems.manage",
     "tickets.manage_all",
     "ai.use",
+    "trends.use",
+    "usage.view",
   ],
   // Ve y gestiona clientes/servicios/equipo y metricas de marketing de TODOS
   // los clientes, pero no sueldos, no cobros de software, no gestion de
@@ -84,13 +94,15 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "marketing.view_all",
     "tickets.manage_all",
     "ai.use",
+    "trends.use",
   ],
   // Gestiona proyectos y activos tecnicos de todos los clientes
   // (dominio/hosting/SSL, bots de GHL) -- es el area tecnica. Los tickets
   // los ve igual que marketing: solo los de sus clientes asignados (ver
   // scopeTicketsFor), por eso no tiene tickets.manage_all.
   programmer: ["systems.manage"],
-  marketing: [],
+  // Solo Radar/ideas, y solo sobre los clientes donde esta en client_team.
+  marketing: ["trends.use"],
   // No tiene ningun permiso interno -- su acceso es exclusivamente al
   // portal (/portal), gateado por requireClient(), no por esta matriz.
   client: [],

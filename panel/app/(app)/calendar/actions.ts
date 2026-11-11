@@ -97,7 +97,7 @@ export async function generateDraftAction(input: {
   notes?: string;
   script?: string;
 }): Promise<{ script?: string; copy?: string; error?: string }> {
-  const { profile } = await requireClientAccess(input.client_id);
+  const { userId, profile } = await requireClientAccess(input.client_id);
   if (!can(profile, "ai.use")) return { error: "No tenés acceso a la IA." };
   if (!isAiConfigured()) return { error: "La IA todavía no está configurada (falta ANTHROPIC_API_KEY)." };
   if (!input.title.trim()) return { error: "Poné al menos el título o la idea de la pieza." };
@@ -109,7 +109,7 @@ export async function generateDraftAction(input: {
       channels: input.channels,
       notes: input.notes,
       script: input.script,
-    });
+    }, { profileId: userId });
   } catch (err) {
     return { error: err instanceof Error && err.message.startsWith("La IA") ? err.message : aiErrorMessage(err) };
   }

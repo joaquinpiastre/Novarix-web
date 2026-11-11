@@ -3,7 +3,14 @@ import { query, queryOne } from "@/lib/db";
 import { decrypt } from "@/lib/crypto/encryption";
 import { log } from "@/lib/log";
 import { metaGet, MetaApiError } from "./client";
-import { AD_INSIGHTS_FIELDS, IG_INSIGHTS_METRICS, PAGE_INSIGHTS_METRICS } from "./metrics";
+import {
+  AD_INSIGHTS_FIELDS,
+  IG_FEED_INSIGHTS,
+  IG_INSIGHTS_METRICS,
+  IG_MEDIA_FIELDS,
+  IG_REELS_INSIGHTS,
+  PAGE_INSIGHTS_METRICS,
+} from "./metrics";
 import { checkAlertsForClient } from "./alerts";
 import type { MetaAsset, MetaConnection } from "@/lib/types/domain";
 
@@ -130,6 +137,93 @@ async function upsertSocialSeries(
   }
 }
 
+interface IgMediaItem {
+  id: string;
+  caption?: string;
+  media_type?: string;
+  media_product_type?: string;
+  permalink?: string;
+  timestamp?: string;
+  thumbnail_url?: string;
+  like_count?: number;
+  comments_count?: number;
+}
+
+/**
+ * Posts y reels de los ultimos 90 dias con sus metricas por pieza (para el
+ * diagnostico de videos). Las metricas de insights se piden de a una pieza;
+ * si Meta rechaza una (cuenta sin permisos, metrica no disponible para ese
+ * tipo), se guarda la pieza igual con lo que haya.
+ */
+async function syncInstagramMedia(asset: MetaAsset, token: string): Promise<void> {
+  const since = Date.now() - 90 * 86_400_000;
+  const res = await metaGet<{ data: IgMediaItem[] }>(`${asset.external_id}/media`, token, {
+    fields: IG_MEDIA_FIELDS,
+    limit: "50",
+  });
+
+  for (const m of res.data ?? []) {
+    if (m.timestamp && Date.parse(m.timestamp) < since) continue;
+    const isReel = m.media_product_type === "REELS";
+    const metrics: Record<string, number> = {};
+    try {
+      const ins = await metaGet<{ data: { name: string; values?: { value: number }[]; total_value?: { value: number } }[] }>(
+        `${m.id}/insights`,
+        token,
+        { metric: (isReel ? IG_REELS_INSIGHTS : IG_FEED_INSIGHTS).join(",") }
+      );
+      for (const row of ins.data ?? []) {
+        const value = row.total_value?.value ?? row.values?.[0]?.value;
+        if (typeof value === "number") metrics[row.name] = value;
+      }
+    } catch (err) {
+      log.warn("ig media insights failed", { mediaId: m.id, err: err instanceof MetaApiError ? err.message : String(err) });
+    }
+
+    await query(
+      `insert into social_posts
+         (asset_id, client_id, external_post_id, permalink, caption, posted_at, media_type, media_product_type, thumbnail_url,
+          views, reach, likes, comments, saved, shares, total_interactions, engagement, avg_watch_time_ms, total_watch_time_ms, updated_at)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$16,$17,$18, now())
+       on conflict (asset_id, external_post_id) do update set
+         permalink = excluded.permalink, caption = excluded.caption, posted_at = excluded.posted_at,
+         media_type = excluded.media_type, media_product_type = excluded.media_product_type,
+         thumbnail_url = excluded.thumbnail_url,
+         views = coalesce(excluded.views, social_posts.views),
+         reach = coalesce(excluded.reach, social_posts.reach),
+         likes = coalesce(excluded.likes, social_posts.likes),
+         comments = coalesce(excluded.comments, social_posts.comments),
+         saved = coalesce(excluded.saved, social_posts.saved),
+         shares = coalesce(excluded.shares, social_posts.shares),
+         total_interactions = coalesce(excluded.total_interactions, social_posts.total_interactions),
+         engagement = coalesce(excluded.engagement, social_posts.engagement),
+         avg_watch_time_ms = coalesce(excluded.avg_watch_time_ms, social_posts.avg_watch_time_ms),
+         total_watch_time_ms = coalesce(excluded.total_watch_time_ms, social_posts.total_watch_time_ms),
+         updated_at = now()`,
+      [
+        asset.id,
+        asset.client_id,
+        m.id,
+        m.permalink ?? null,
+        m.caption ?? null,
+        m.timestamp ?? null,
+        m.media_type ?? null,
+        m.media_product_type ?? null,
+        m.thumbnail_url ?? null,
+        metrics.views ?? null,
+        metrics.reach ?? null,
+        m.like_count ?? null,
+        m.comments_count ?? null,
+        metrics.saved ?? null,
+        metrics.shares ?? null,
+        metrics.total_interactions ?? null,
+        metrics.ig_reels_avg_watch_time ?? null,
+        metrics.ig_reels_video_view_total_time ?? null,
+      ]
+    );
+  }
+}
+
 /** Sincroniza todos los activos de una conexion. sinceDays=3 para la sync diaria normal (Meta reajusta datos de los ultimos dias); mas alto para un backfill inicial. */
 export async function syncConnection(connectionId: string, sinceDays = 3): Promise<void> {
   const connection = await queryOne<MetaConnection>("select * from meta_connections where id = $1", [
@@ -148,7 +242,10 @@ export async function syncConnection(connectionId: string, sinceDays = 3): Promi
     try {
       if (asset.asset_type === "ad_account") await syncAdAccount(asset, token, sinceDays);
       else if (asset.asset_type === "page") await syncPage(asset, token, sinceDays);
-      else if (asset.asset_type === "instagram") await syncInstagram(asset, token, sinceDays);
+      else if (asset.asset_type === "instagram") {
+        await syncInstagram(asset, token, sinceDays);
+        await syncInstagramMedia(asset, token);
+      }
     } catch (err) {
       hadError = true;
       const message = err instanceof MetaApiError ? err.message : String(err);
