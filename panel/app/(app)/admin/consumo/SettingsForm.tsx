@@ -5,7 +5,14 @@ import { useRouter } from "next/navigation";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import type { TrendSettings } from "@/lib/trends/settings";
+import { Select } from "@/components/ui/Select";
+import type { RadarModel, TrendSettings } from "@/lib/trends/settings";
+
+const MODEL_OPTIONS: { value: RadarModel; label: string }[] = [
+  { value: "claude-haiku-5-5", label: "Económico — Claude Haiku 5.5 (≈ USD 0,03–0,08 por búsqueda)" },
+  { value: "claude-sonnet-5-5", label: "Equilibrado — Claude Sonnet 5.5 (≈ USD 0,25–0,40 por búsqueda)" },
+  { value: "claude-opus-5-5", label: "Máxima calidad — Claude Opus 5.5 (≈ USD 0,50–1 por búsqueda)" },
+];
 import { updateUsageSettings } from "./actions";
 
 const ROLES = [
@@ -32,6 +39,7 @@ export function SettingsForm({ settings }: { settings: TrendSettings }) {
     Object.fromEntries(ROLES.map((r) => [r.key, String(settings.daily_ai_limits[r.key] ?? 0)]))
   );
   const [budget, setBudget] = useState(String(settings.monthly_budget_usd));
+  const [radarModel, setRadarModel] = useState<RadarModel>(settings.radar_model);
   const [msg, setMsg] = useState<{ error?: string; ok?: boolean } | null>(null);
   const [pending, start] = useTransition();
 
@@ -52,6 +60,7 @@ export function SettingsForm({ settings }: { settings: TrendSettings }) {
               daily_search_limits: searchLimits as never,
               daily_ai_limits: aiLimits as never,
               monthly_budget_usd: budget,
+              radar_model: radarModel,
             });
             setMsg(res.error ? { error: res.error } : { ok: true });
             if (!res.error) router.refresh();
@@ -59,6 +68,19 @@ export function SettingsForm({ settings }: { settings: TrendSettings }) {
         }}
       >
         <CardTitle>Configuración del Radar y límites</CardTitle>
+
+        <div className="flex flex-col gap-1.5">
+          <Select label="Modelo de IA del Radar (relevancia, análisis y patrones)" value={radarModel} onChange={(e) => setRadarModel(e.target.value as RadarModel)}>
+            {MODEL_OPTIONS.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </Select>
+          <p className="text-xs text-text-muted">
+            El plan de búsqueda usa siempre el modelo principal. Los costos son estimados para 5 videos analizados; bajar los videos a analizar también baja el costo.
+          </p>
+        </div>
 
         <div>
           <p className="text-xs font-medium text-text-muted">Pesos del score (se normalizan a 100%)</p>

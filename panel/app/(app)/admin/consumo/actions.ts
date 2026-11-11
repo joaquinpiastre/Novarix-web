@@ -6,7 +6,7 @@ import { query } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/requirePermission";
 import { recordAudit } from "@/lib/audit/log";
 import { getClientIp } from "@/lib/utils/request";
-import { getTrendSettings } from "@/lib/trends/settings";
+import { getTrendSettings, RADAR_MODELS } from "@/lib/trends/settings";
 import { normalizeWeights } from "@/lib/trends/score";
 
 const limit = z.coerce.number().int().min(0).max(10000);
@@ -23,6 +23,7 @@ const settingsSchema = z.object({
   daily_search_limits: z.object({ admin: limit, marketing_admin: limit, marketing: limit }),
   daily_ai_limits: z.object({ admin: limit, marketing_admin: limit, marketing: limit }),
   monthly_budget_usd: z.coerce.number().min(0).max(100000),
+  radar_model: z.enum(RADAR_MODELS),
 });
 
 export async function updateUsageSettings(input: z.input<typeof settingsSchema>): Promise<{ error?: string }> {
@@ -34,7 +35,7 @@ export async function updateUsageSettings(input: z.input<typeof settingsSchema>)
   const weights = normalizeWeights(d.weights);
   await query(
     `update trend_settings set weights = $1, cache_ttl_hours = $2, analyze_top_n = $3, daily_search_limits = $4,
-       daily_ai_limits = $5, monthly_budget_usd = $6, updated_by = $7, updated_at = now(),
+       daily_ai_limits = $5, monthly_budget_usd = $6, updated_by = $7, updated_at = now(), radar_model = $8,
        budget_warned_month = case when monthly_budget_usd <> $6 then null else budget_warned_month end
      where id = true`,
     [
@@ -45,6 +46,7 @@ export async function updateUsageSettings(input: z.input<typeof settingsSchema>)
       JSON.stringify(d.daily_ai_limits),
       d.monthly_budget_usd,
       userId,
+      d.radar_model,
     ]
   );
   await recordAudit({ actorId: userId, action: "usage.settings.update", entityType: "trend_settings", before, after: { ...d, weights }, ip: getClientIp() });

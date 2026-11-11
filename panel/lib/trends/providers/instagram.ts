@@ -33,7 +33,7 @@ import { ProviderError, type ProviderRunContext, type TrendProvider } from "./ty
 //   2. TRENDS_IG_CONNECTION_ID: una conexion de Meta cargada en el panel.
 
 const HASHTAG_WEEKLY_LIMIT = 28; // margen de 2 sobre el limite real de 30
-const MAX_ACCOUNTS_PER_SEARCH = 6;
+const MAX_ACCOUNTS_PER_SEARCH = 12;
 const MAX_HASHTAGS_PER_SEARCH = 3;
 
 interface IgSearchIdentity {
@@ -277,6 +277,46 @@ async function hashtagTopMedia(tag: string, plan: SearchPlan, ctx: ProviderRunCo
     });
 }
 
+interface CandidateAccount {
+  handle: string;
+  source: "plan" | "competidor" | "ya funcionó";
+}
+
+/**
+ * Cuentas a revisar con Business Discovery, en orden de prioridad:
+ * 1. las del plan (IA o persona), 2. los competidores cargados del cliente,
+ * 3. cuentas de Instagram que ya dieron buenos resultados para ese cliente.
+ */
+async function candidateAccounts(plan: SearchPlan, clientId: string | null): Promise<CandidateAccount[]> {
+  const out: CandidateAccount[] = [];
+  const seen = new Set<string>();
+  const push = (handle: string | null | undefined, source: CandidateAccount["source"]) => {
+    const h = (handle ?? "").replace(/^@/, "").trim().toLowerCase();
+    if (!h || seen.has(h) || !/^[a-z0-9._]{1,30}$/.test(h)) return;
+    seen.add(h);
+    out.push({ handle: h, source });
+  };
+  for (const a of plan.reference_accounts) if (a.platform === "instagram") push(a.handle, "plan");
+  if (clientId) {
+    const competitors = await query<{ ig_username: string }>(
+      "select ig_username from competitors where client_id = $1 and ig_username is not null order by created_at",
+      [clientId]
+    );
+    for (const c of competitors) push(c.ig_username, "competidor");
+    const proven = await query<{ author_handle: string }>(
+      `select v.author_handle from trend_search_results r
+       join trend_searches s on s.id = r.search_id
+       join trend_videos v on v.id = r.video_id
+       where s.client_id = $1 and v.platform = 'instagram' and v.author_handle is not null
+         and not r.discarded and coalesce(r.final_score, 0) >= 50
+       group by v.author_handle order by max(r.final_score) desc limit 6`,
+      [clientId]
+    );
+    for (const p of proven) push(p.author_handle, "ya funcionó");
+  }
+  return out;
+}
+
 export const instagramProvider: TrendProvider = {
   id: "instagram",
   platform: "instagram",
@@ -288,7 +328,8 @@ export const instagramProvider: TrendProvider = {
     const results: NormalizedVideo[] = [];
     const since = Date.now() - plan.period_days * 86_400_000;
 
-    const accounts = plan.reference_accounts.filter((a) => a.platform === "instagram").slice(0, MAX_ACCOUNTS_PER_SEARCH);
+    const accounts = (await candidateAccounts(plan, ctx.clientId ?? null)).slice(0, MAX_ACCOUNTS_PER_SEARCH);
+    let ok = 0;
     for (const account of accounts) {
       try {
         const bd = await businessDiscovery(account.handle, usage);
@@ -297,10 +338,16 @@ export const instagramProvider: TrendProvider = {
             (m) => (!m.publishedAt || Date.parse(m.publishedAt) >= since) && (m.views ?? 0) >= plan.min_views
           )
         );
+        ok++;
       } catch (err) {
         const msg = err instanceof MetaApiError || err instanceof ProviderError ? err.message : String(err);
-        ctx.note(`Instagram: no se pudo revisar @${account.handle} (${msg}). Tiene que ser una cuenta Business o Creator.`);
+        ctx.note(`Instagram: se salteó @${account.handle} (${account.source}): ${msg.slice(0, 120)}. Tiene que ser una cuenta Business o Creator.`);
       }
+    }
+    if (accounts.length > 0 && ok < 3) {
+      ctx.note(
+        `Instagram: solo se pudieron revisar ${ok} cuentas. Sumá cuentas referentes del rubro en el plan (instagram: @cuenta) o como competidores en Ideas → Competidores: el Radar las usa en las próximas búsquedas.`
+      );
     }
 
     if (isHashtagSearchEnabled()) {
@@ -312,7 +359,7 @@ export const instagramProvider: TrendProvider = {
           ctx.note(`Instagram: falló la búsqueda de #${tag} (${msg}).`);
         }
       }
-    } else if (accounts.length === 0) {
+    } else if (accounts.length === 0 && !isHashtagSearchEnabled()) {
       ctx.note(
         "Instagram: la búsqueda por hashtag está apagada hasta que Meta apruebe \"Instagram Public Content Access\". Agregá cuentas referentes (@usuario) al plan para revisar sus reels."
       );

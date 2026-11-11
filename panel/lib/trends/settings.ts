@@ -13,22 +13,32 @@ export interface TrendSettings {
   daily_ai_limits: Partial<Record<UserRole, number>>;
   monthly_budget_usd: number;
   budget_warned_month: string | null;
+  radar_model: RadarModel;
+}
+
+/** Modelos elegibles para el Radar (relevancia, analisis por video y patrones). */
+export const RADAR_MODELS = ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"] as const;
+export type RadarModel = (typeof RADAR_MODELS)[number];
+
+export function isRadarModel(v: unknown): v is RadarModel {
+  return typeof v === "string" && (RADAR_MODELS as readonly string[]).includes(v);
 }
 
 export async function getTrendSettings(): Promise<TrendSettings> {
   const row = await queryOne<TrendSettings>(
     `select weights, cache_ttl_hours, analyze_top_n, daily_search_limits, daily_ai_limits,
-            monthly_budget_usd, budget_warned_month
+            monthly_budget_usd, budget_warned_month, radar_model
      from trend_settings where id = true`
   );
   return {
     weights: normalizeWeights(row?.weights ?? {}),
     cache_ttl_hours: row?.cache_ttl_hours ?? 24,
-    analyze_top_n: row?.analyze_top_n ?? 10,
+    analyze_top_n: row?.analyze_top_n ?? 5,
     daily_search_limits: row?.daily_search_limits ?? {},
     daily_ai_limits: row?.daily_ai_limits ?? {},
     monthly_budget_usd: row?.monthly_budget_usd ?? 100,
     budget_warned_month: row?.budget_warned_month ?? null,
+    radar_model: isRadarModel(row?.radar_model) ? row.radar_model : "claude-haiku-5-5",
   };
 }
 

@@ -25,7 +25,7 @@ export function SearchForm({ clients, requireClient }: { clients: ClientOption[]
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
   const [clientId, setClientId] = useState(requireClient && clients.length === 1 ? clients[0].id : "");
-  const [platforms, setPlatforms] = useState<Platform[]>([...PLATFORMS]);
+  const [platforms, setPlatforms] = useState<Platform[]>(["instagram"]);
   const [period, setPeriod] = useState("30");
   const [language, setLanguage] = useState("es");
   const [region, setRegion] = useState("AR");

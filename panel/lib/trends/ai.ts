@@ -3,7 +3,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { query, queryOne } from "@/lib/db";
-import { AI_FALLBACK, AI_MODEL, getAiClient } from "@/lib/ai/client";
+import { AI_FALLBACK, AI_MODEL, aiFallbackFor, getAiClient } from "@/lib/ai/client";
+import { getTrendSettings } from "./settings";
 import { buildClientContext } from "@/lib/ai/clientContext";
 import { recordAiUsage, type UsageContext } from "@/lib/usage/record";
 import {
@@ -56,7 +57,7 @@ export async function planSearch(
       "- keywords_en: 1 a 3 equivalentes en inglés, solo si suman (formatos que funcionan en cualquier idioma).",
       "- synonyms: términos del rubro y variantes regionales (Argentina/LATAM).",
       "- hashtags: 3 a 6, sin #, en minúscula, de nicho y del rubro (evitá genéricos como fyp o viral).",
-      "- reference_accounts: cuentas de negocio referentes del rubro que conozcas con seguridad (Instagram: solo cuentas Business/Creator). Si no estás seguro de que existe, no la pongas.",
+      "- reference_accounts: si Instagram está entre las plataformas, proponé entre 6 y 10 cuentas de Instagram de negocios o creadores del rubro (Argentina y LATAM primero, después referentes globales) que publiquen reels con buen alcance. Solo @usuario real que conozcas con seguridad; cuentas de marcas, comercios, profesionales o creadores del rubro, no personas privadas. Si una no existe o no es profesional, el sistema la saltea solo.",
       "- providers, period_days, language, region, max_duration_seconds y min_views: respetá los filtros que te pasan, salvo que el pedido diga otra cosa explícitamente.",
       "- relevance_criteria: qué tiene que mostrar un video para servir (para descartar lo que no).",
     ].join("\n"),
@@ -114,6 +115,7 @@ export async function scoreRelevance(
   videos: RelevanceInput[],
   usage: UsageContext
 ): Promise<Map<number, { relevance: number; reason: string }>> {
+  const radarModel = (await getTrendSettings()).radar_model;
   const out = new Map<number, { relevance: number; reason: string }>();
   for (let start = 0; start < videos.length; start += 60) {
     const batch = videos.slice(start, start + 60);
@@ -126,9 +128,9 @@ export async function scoreRelevance(
       )
       .join("\n\n");
     const response = await getAiClient().beta.messages.parse({
-      model: AI_MODEL,
+      model: radarModel,
       max_tokens: 16000,
-      ...AI_FALLBACK,
+      ...aiFallbackFor(radarModel),
       output_config: { effort: "low", format: betaZodOutputFormat(relevanceSchema) },
       system: `${AGENCY}\nPuntuás qué tan relevante es cada video como referencia para un pedido de contenido. 0 = nada que ver o spam; 50 = tangencial; 80+ = justo lo que se busca. Devolvé un item por cada índice. ${DATA_RULE}`,
       messages: [
@@ -138,7 +140,7 @@ export async function scoreRelevance(
         },
       ],
     });
-    await recordAiUsage("radar.relevance", AI_MODEL, response.usage, usage);
+    await recordAiUsage("radar.relevance", radarModel, response.usage, usage);
     for (const item of response.parsed_output?.items ?? []) {
       out.set(item.i, { relevance: Math.min(100, Math.max(0, Math.round(item.relevance))), reason: item.reason.slice(0, 300) });
     }
@@ -189,6 +191,7 @@ export async function analyzeVideo(
   usage: UsageContext,
   opts: { force?: boolean; createdBy?: string | null } = {}
 ): Promise<AnalysisRow> {
+  const radarModel = (await getTrendSettings()).radar_model;
   if (!opts.force) {
     const cached = await getAnalysis(video.id, clientId);
     if (cached) return cached;
@@ -213,9 +216,9 @@ export async function analyzeVideo(
 
   const run = async (withImage: boolean) =>
     getAiClient().beta.messages.parse({
-      model: AI_MODEL,
+      model: radarModel,
       max_tokens: 16000,
-      ...AI_FALLBACK,
+      ...aiFallbackFor(radarModel),
       output_config: { effort: "medium", format: betaZodOutputFormat(videoAnalysisSchema) },
       system,
       messages: [
@@ -239,7 +242,7 @@ export async function analyzeVideo(
     if (err instanceof Anthropic.BadRequestError && video.thumbnail_url) response = await run(false);
     else throw err;
   }
-  await recordAiUsage("radar.analysis", AI_MODEL, response.usage, usage);
+  await recordAiUsage("radar.analysis", radarModel, response.usage, usage);
   if (response.stop_reason === "refusal" || !response.parsed_output) {
     throw new AiStepError("La IA no pudo analizar este video.");
   }
@@ -252,7 +255,7 @@ export async function analyzeVideo(
      on conflict (video_id, coalesce(client_id, '00000000-0000-0000-0000-000000000000'::uuid))
      do update set hook_type = excluded.hook_type, analysis = excluded.analysis, model = excluded.model, created_at = now()
      returning *`,
-    [video.id, clientId, analysis.hook.type, JSON.stringify(analysis), AI_MODEL, opts.createdBy ?? null]
+    [video.id, clientId, analysis.hook.type, JSON.stringify(analysis), radarModel, opts.createdBy ?? null]
   );
   return row!;
 }
@@ -264,6 +267,7 @@ export async function summarizePatterns(
   top: { video: TrendVideoRow; analysis: VideoAnalysis | null; score: number | null }[],
   usage: UsageContext
 ): Promise<SearchPatterns | null> {
+  const radarModel = (await getTrendSettings()).radar_model;
   if (top.length === 0) return null;
 
   const durations = top.map((t) => t.video.duration_seconds).filter((d): d is number => d != null);
@@ -284,14 +288,14 @@ export async function summarizePatterns(
     .join("\n\n");
 
   const response = await getAiClient().beta.messages.parse({
-    model: AI_MODEL,
+    model: radarModel,
     max_tokens: 8000,
-    ...AI_FALLBACK,
+    ...aiFallbackFor(radarModel),
     output_config: { effort: "low", format: betaZodOutputFormat(patternsSchema) },
     system: `${AGENCY}\nResumís qué tienen en común los mejores videos de una búsqueda: ganchos que más se repiten (contalos), formatos, y patrones accionables. Es una inferencia, no un dato. ${DATA_RULE}`,
     messages: [{ role: "user", content: `<pedido>\n${prompt}\n</pedido>\n<top_videos>\n${list}\n</top_videos>` }],
   });
-  await recordAiUsage("radar.patterns", AI_MODEL, response.usage, usage);
+  await recordAiUsage("radar.patterns", radarModel, response.usage, usage);
   if (!response.parsed_output) return null;
   return {
     ...response.parsed_output,

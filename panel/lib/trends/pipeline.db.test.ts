@@ -81,7 +81,7 @@ describe.skipIf(!process.env.RUN_DB_TESTS)("Radar contra la base (integración)"
     const cards = await searchResultCards(searchId, clientId);
     expect(cards.length).toBe(36);
     expect(cards.filter((c) => c.scores?.discarded).length).toBeGreaterThan(0);
-    expect(cards.filter((c) => c.analysis).length).toBe(10);
+    expect(cards.filter((c) => c.analysis).length).toBe(5);
     expect(cards[0].scores?.final).not.toBeNull();
   });
 
