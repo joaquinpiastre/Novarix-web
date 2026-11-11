@@ -271,7 +271,8 @@ export async function syncConnection(connectionId: string, sinceDays = 3): Promi
 
 export async function syncAllActiveConnections(): Promise<void> {
   const connections = await query<{ id: string }>(
-    "select id from meta_connections where status != 'error'"
+    `select mc.id from meta_connections mc join clients c on c.id = mc.client_id
+     where mc.status != 'error' and c.status <> 'inactivo'`
   );
   for (const c of connections) {
     try {

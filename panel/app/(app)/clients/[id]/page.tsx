@@ -81,7 +81,7 @@ export default async function ClientDetailPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { tab?: string };
+  searchParams: { tab?: string; editar?: string };
 }) {
   const access = await requireClientAccess(params.id);
   const { full } = access;
@@ -301,6 +301,8 @@ export default async function ClientDetailPage({
       companyUsers={companyUsers}
       pendingInvites={pendingInvites}
       initialTab={searchParams.tab}
+      initialEditing={searchParams.editar === "1"}
+      canDelete={can(access.profile, "clients.delete")}
       metaOAuthEnabled={isMetaOAuthConfigured()}
     />
   );

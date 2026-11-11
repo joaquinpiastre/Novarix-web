@@ -330,6 +330,7 @@ export async function runDueSavedSearches(): Promise<void> {
   }>(
     `select id, profile_id, client_id, name, prompt, filters, plan, min_score from saved_searches
      where active and (last_run_at is null or last_run_at < now() - make_interval(days => every_days))
+       and (client_id is null or not exists (select 1 from clients c where c.id = saved_searches.client_id and c.status = 'inactivo'))
      order by last_run_at nulls first limit 5`
   );
 

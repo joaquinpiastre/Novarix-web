@@ -10,6 +10,8 @@ import { getSessionProfile } from "@/lib/auth/getSessionProfile";
 import { randomBytes } from "crypto";
 import { deleteOtherSessionsForUser, hashPassword } from "@/lib/auth/session";
 import { createSignedToken } from "@/lib/auth/signedToken";
+import { deleteObject } from "@/lib/storage/s3";
+import { log } from "@/lib/log";
 import { ADMIN_PREVIEW_COOKIE, ADMIN_PREVIEW_TTL_MS } from "@/lib/auth/requireClient";
 import { createClientInvite, inviteEmailHtml } from "@/lib/auth/clientInvite";
 import { sendEmail } from "@/lib/notifications/email";
@@ -159,6 +161,92 @@ export async function updateClient(
   revalidatePath("/clients");
   revalidatePath(`/clients/${id}`);
   return { ok: true };
+}
+
+const STATUS_VALUES: ClientStatus[] = ["prospecto", "activo", "pausado", "baja", "inactivo"];
+
+/** Cambio rapido de estado (ej. "Marcar como inactivo" / "Reactivar"). */
+export async function setClientStatus(clientId: string, status: ClientStatus): Promise<{ error?: string }> {
+  const { userId: actorId } = await requirePermission("clients.manage");
+  if (!STATUS_VALUES.includes(status)) return { error: "Estado inválido." };
+  const before = await queryOne<{ status: string; name: string }>("select status::text as status, name from clients where id = $1", [clientId]);
+  if (!before) return { error: "No existe ese cliente." };
+  await query("update clients set status = $2 where id = $1", [clientId, status]);
+  // Al inactivar se cierran las sesiones abiertas de sus usuarios del portal.
+  if (status === "inactivo") {
+    const users = await query<{ profile_id: string }>("select profile_id from client_users where client_id = $1", [clientId]);
+    for (const u of users) await deleteOtherSessionsForUser(u.profile_id);
+  }
+  await recordAudit({ actorId, action: "clients.set_status", entityType: "client", entityId: clientId, before: { status: before.status }, after: { status }, ip: getClientIp() });
+  revalidatePath("/clients");
+  revalidatePath(`/clients/${clientId}`);
+  return {};
+}
+
+/**
+ * Elimina un cliente y TODO lo suyo (contenido, tickets, metricas, archivos,
+ * busquedas, usuarios del portal). Irreversible: solo admin y escribiendo el
+ * nombre exacto. Si tiene cobros o acuerdos registrados, no se permite (para
+ * no perder el historial financiero): en ese caso, marcarlo inactivo.
+ */
+export async function deleteClient(clientId: string, confirmName: string): Promise<{ error?: string }> {
+  const { userId: actorId } = await requirePermission("clients.delete");
+  const client = await queryOne<{ id: string; name: string; status: string }>("select id, name, status::text as status from clients where id = $1", [clientId]);
+  if (!client) return { error: "No existe ese cliente." };
+  if (confirmName.trim() !== client.name.trim()) return { error: "El nombre no coincide. Escribilo exactamente igual para confirmar." };
+
+  const money = await queryOne<{ payments: number; agreements: number }>(
+    `select (select count(*)::int from payments_in where client_id = $1) as payments,
+            (select count(*)::int from recurring_agreements where client_id = $1) as agreements`,
+    [clientId]
+  );
+  if ((money?.payments ?? 0) > 0 || (money?.agreements ?? 0) > 0) {
+    return {
+      error: `No se puede eliminar: tiene ${money?.payments ?? 0} cobro(s) y ${money?.agreements ?? 0} acuerdo(s) registrados. Para no perder el historial financiero, marcalo como Inactivo.`,
+    };
+  }
+
+  // Archivos en el bucket (se borran despues de la base, best-effort).
+  const keys = (
+    await query<{ storage_key: string }>(
+      `select storage_key from content_files where client_id = $1
+       union all select storage_key from client_files where client_id = $1
+       union all select storage_key from client_reports where client_id = $1
+       union all select a.storage_key from ticket_attachments a join support_tickets t on t.id = a.ticket_id where t.client_id = $1`,
+      [clientId]
+    )
+  ).map((r) => r.storage_key);
+  // Usuarios del portal de esta empresa (cuentas de rol client).
+  const portalProfiles = (
+    await query<{ profile_id: string }>(
+      `select cu.profile_id from client_users cu join profiles p on p.id = cu.profile_id
+       where cu.client_id = $1 and p.role = 'client'`,
+      [clientId]
+    )
+  ).map((r) => r.profile_id);
+
+  await query("delete from clients where id = $1", [clientId]);
+  if (portalProfiles.length) {
+    await query(
+      `delete from profiles where id = any($1::uuid[]) and role = 'client'
+         and not exists (select 1 from client_users cu where cu.profile_id = profiles.id)`,
+      [portalProfiles]
+    );
+  }
+  for (const key of keys) {
+    await deleteObject(key).catch((err) => log.warn("no se pudo borrar archivo del cliente eliminado", { key, err: String(err) }));
+  }
+
+  await recordAudit({
+    actorId,
+    action: "clients.delete",
+    entityType: "client",
+    entityId: clientId,
+    before: { name: client.name, status: client.status, files: keys.length, portal_users: portalProfiles.length },
+    ip: getClientIp(),
+  });
+  revalidatePath("/clients");
+  redirect("/clients");
 }
 
 export async function addClientService(formData: FormData): Promise<void> {

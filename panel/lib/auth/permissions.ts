@@ -35,7 +35,9 @@ export type Permission =
   // Panel de consumo de proveedores/IA, limites y presupuesto (/admin/consumo).
   | "usage.view"
   // Biblioteca de contenido (/marketing/biblioteca). `marketing` acotado a sus clientes.
-  | "library.use";
+  | "library.use"
+  // Eliminar un cliente con todos sus datos (irreversible). Solo admin.
+  | "clients.delete";
 
 // Lista explícita de todos los permisos que existen. Se usa en los tests
 // para verificar que ninguno quede sin un caso que lo ejercite (ver
@@ -62,6 +64,7 @@ export const ALL_PERMISSIONS: Permission[] = [
   "trends.use",
   "usage.view",
   "library.use",
+  "clients.delete",
 ];
 
 const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
@@ -86,6 +89,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "trends.use",
     "usage.view",
     "library.use",
+    "clients.delete",
   ],
   // Ve y gestiona clientes/servicios/equipo y metricas de marketing de TODOS
   // los clientes, pero no sueldos, no cobros de software, no gestion de

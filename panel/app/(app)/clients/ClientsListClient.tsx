@@ -18,6 +18,7 @@ const STATUS_TONE: Record<ClientStatus, "success" | "warning" | "neutral" | "dan
   prospecto: "accent",
   pausado: "warning",
   baja: "danger",
+  inactivo: "neutral",
 };
 
 function SubmitButton() {
@@ -108,8 +109,8 @@ export function ClientsListClient({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-2">
-          {(["all", "activo", "prospecto", "pausado", "baja"] as const).map((s) => (
+        <div className="flex flex-wrap gap-2">
+          {(["all", "activo", "prospecto", "pausado", "baja", "inactivo"] as const).map((s) => (
             <button
               key={s}
               type="button"

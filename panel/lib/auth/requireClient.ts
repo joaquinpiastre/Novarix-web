@@ -37,6 +37,8 @@ export async function requireClient(): Promise<ClientAccessContext> {
       [userId]
     );
     if (!membership) redirect("/portal/login");
+    const client = await queryOne<{ status: string }>("select status::text as status from clients where id = $1", [membership.client_id]);
+    if (client?.status === "inactivo") redirect("/portal/inactivo");
     return {
       userId,
       profile,

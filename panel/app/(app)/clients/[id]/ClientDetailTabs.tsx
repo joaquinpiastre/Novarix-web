@@ -1,6 +1,7 @@
 "use client";
 
 import { CredentialsBox } from "@/components/invites/CredentialsBox";
+import { ClientActions } from "./ClientActions";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useFormState, useFormStatus } from "react-dom";
@@ -77,6 +78,7 @@ const STATUS_TONE = {
   prospecto: "accent",
   pausado: "warning",
   baja: "danger",
+  inactivo: "neutral",
 } as const;
 
 function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: string }) {
@@ -88,8 +90,8 @@ function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: st
   );
 }
 
-function ResumenTab({ client, canEdit }: { client: Client; canEdit: boolean }) {
-  const [editing, setEditing] = useState(false);
+function ResumenTab({ client, canEdit, initialEditing = false }: { client: Client; canEdit: boolean; initialEditing?: boolean }) {
+  const [editing, setEditing] = useState(initialEditing);
   const [state, formAction] = useFormState<UpdateClientState, FormData>(updateClient, {});
 
   if (editing && canEdit) {
@@ -720,9 +722,13 @@ export function ClientDetailTabs({
   techAssets,
   ghlBots,
   initialTab,
+  initialEditing = false,
+  canDelete = false,
   metaOAuthEnabled,
 }: {
   initialTab?: string;
+  initialEditing?: boolean;
+  canDelete?: boolean;
   metaOAuthEnabled: boolean;
   access: ClientAccess;
   client: Client;
@@ -766,7 +772,7 @@ export function ClientDetailTabs({
       label: "Resumen",
       content: (
         <div className="flex flex-col gap-5">
-          <ResumenTab client={client} canEdit={full} />
+          <ResumenTab key={String(initialEditing)} client={client} canEdit={full} initialEditing={initialEditing} />
           <Card className="max-w-2xl">
             <div className="flex items-center justify-between">
               <CardTitle>Tickets</CardTitle>
@@ -881,16 +887,26 @@ export function ClientDetailTabs({
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-text-primary">{client.name}</h1>
-          <Badge tone={STATUS_TONE[client.status]}>{CLIENT_STATUS_LABELS[client.status]}</Badge>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold tracking-tight text-text-primary">{client.name}</h1>
+            <Badge tone={STATUS_TONE[client.status]}>{CLIENT_STATUS_LABELS[client.status]}</Badge>
+          </div>
+          <p className="text-sm text-text-muted">
+            {[client.industry, client.city].filter(Boolean).join(" · ") || "Sin rubro/ciudad cargado"}
+          </p>
+          {client.status === "inactivo" && (
+            <p className="mt-1 text-xs text-warning">Inactivo: sin acceso al portal, sin sincronización de Meta ni alertas del Radar.</p>
+          )}
         </div>
-        <p className="text-sm text-text-muted">
-          {[client.industry, client.city].filter(Boolean).join(" · ") || "Sin rubro/ciudad cargado"}
-        </p>
+        <ClientActions clientId={client.id} name={client.name} status={client.status} canManage={full} canDelete={canDelete} />
       </div>
-      <Tabs items={tabs} defaultTab={tabs.some((t) => t.id === initialTab) ? initialTab : undefined} />
+      <Tabs
+        key={`${initialTab ?? ""}:${initialEditing}`}
+        items={tabs}
+        defaultTab={tabs.some((t) => t.id === initialTab) ? initialTab : undefined}
+      />
     </div>
   );
 }
