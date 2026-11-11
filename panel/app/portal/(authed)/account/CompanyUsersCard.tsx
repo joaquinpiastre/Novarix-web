@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import type { PendingInvite, PortalCompanyUser } from "@/lib/portal/queries";
 import { deactivateTeammate, inviteTeammate, type ActionState } from "./actions";
+import { InviteLinkBox } from "@/components/invites/InviteLinkBox";
 
 function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: string }) {
   const { pending } = useFormStatus();
@@ -43,7 +44,7 @@ export function CompanyUsersCard({
         <form action={formAction} className="mt-4 flex flex-col gap-3 rounded-xl border border-border bg-surface-hover p-4">
           <Input label="Email de tu compañero/a" name="email" type="email" required />
           {state.error && <p className="text-sm text-danger">{state.error}</p>}
-          {state.sent && <p className="text-sm text-success">Invitación enviada.</p>}
+          {state.sent && <InviteLinkBox email={state.sent.email} link={state.sent.link} emailed={state.sent.emailed} />}
           <SubmitButton label="Enviar invitación" pendingLabel="Enviando…" />
         </form>
       )}

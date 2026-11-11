@@ -13,7 +13,7 @@ import { getClientIp } from "@/lib/utils/request";
 
 export interface ActionState {
   error?: string;
-  sent?: boolean;
+  sent?: { email: string; link: string; emailed: boolean };
 }
 
 /** Solo el owner de la empresa puede invitar compañeros, y siempre como "member" (nunca otro owner). */
@@ -37,7 +37,7 @@ export async function inviteTeammate(
   const client = await queryOne<{ name: string }>("select name from clients where id = $1", [access.clientId]);
   const { token } = await createClientInvite(access.clientId, parsed.data.email, "member", access.userId);
   const inviteUrl = `https://panel.novarix.agency/portal/accept-invite?token=${token}`;
-  await sendEmail(
+  const emailed = await sendEmail(
     parsed.data.email,
     "Invitación al portal de Novarix",
     inviteEmailHtml(client?.name ?? "tu empresa", inviteUrl)
@@ -53,7 +53,7 @@ export async function inviteTeammate(
   });
 
   revalidatePath("/portal/account");
-  return { sent: true };
+  return { sent: { email: parsed.data.email, link: inviteUrl, emailed } };
 }
 
 /** El owner solo puede desactivar members de su propia empresa, nunca a otro owner. */

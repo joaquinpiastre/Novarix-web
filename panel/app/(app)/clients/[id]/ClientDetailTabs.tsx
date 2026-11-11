@@ -1,5 +1,6 @@
 "use client";
 
+import { InviteLinkBox } from "@/components/invites/InviteLinkBox";
 import { useState } from "react";
 import Link from "next/link";
 import { useFormState, useFormStatus } from "react-dom";
@@ -327,9 +328,7 @@ function PortalUsersCard({
         </form>
       )}
 
-      {state.sent && (
-        <p className="mt-4 text-sm text-success">Invitación enviada a {state.sent.email}.</p>
-      )}
+      {state.sent && <InviteLinkBox email={state.sent.email} link={state.sent.link} emailed={state.sent.emailed} />}
 
       <ul className="mt-4 divide-y divide-border">
         {companyUsers.length === 0 && <p className="text-sm text-text-muted">Sin accesos al portal todavía.</p>}

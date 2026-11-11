@@ -267,7 +267,7 @@ const inviteSchema = z.object({
 });
 
 export interface InviteClientUserState extends ActionState {
-  sent?: { email: string };
+  sent?: { email: string; link: string; emailed: boolean };
 }
 
 /** Alta por invitación: link firmado de un solo uso (72hs) por email, en vez de contraseña temporal en pantalla. */
@@ -293,7 +293,7 @@ export async function inviteClientUser(
 
   const { token } = await createClientInvite(client_id, email, client_role, actorId);
   const inviteUrl = `https://panel.novarix.agency/portal/accept-invite?token=${token}`;
-  await sendEmail(email, "Invitación al portal de Novarix", inviteEmailHtml(client.name, inviteUrl));
+  const emailed = await sendEmail(email, "Invitación al portal de Novarix", inviteEmailHtml(client.name, inviteUrl));
 
   await recordAudit({
     actorId,
@@ -305,7 +305,8 @@ export async function inviteClientUser(
   });
 
   revalidatePath(`/clients/${client_id}`);
-  return { sent: { email } };
+  // El link se muestra a quien invita para que lo pueda mandar por WhatsApp (sin Resend el email no sale).
+  return { sent: { email, link: inviteUrl, emailed } };
 }
 
 export async function cancelInvite(formData: FormData): Promise<void> {
