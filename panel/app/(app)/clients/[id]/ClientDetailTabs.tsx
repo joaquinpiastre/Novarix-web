@@ -1,7 +1,7 @@
 "use client";
 
-import { InviteLinkBox } from "@/components/invites/InviteLinkBox";
-import { useState } from "react";
+import { CredentialsBox } from "@/components/invites/CredentialsBox";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useFormState, useFormStatus } from "react-dom";
 import { Plus, Trash2 } from "lucide-react";
@@ -42,13 +42,15 @@ import {
   addClientService,
   addTeamMember,
   cancelInvite,
-  inviteClientUser,
+  createClientUserAccount,
+  resetClientUserPassword,
   removeClientService,
   removeTeamMember,
   setClientUserActive,
   startClientPreview,
   updateClient,
-  type InviteClientUserState,
+  type ClientCredentials,
+  type CreateClientAccountState,
   type UpdateClientState,
 } from "../actions";
 import {
@@ -297,7 +299,11 @@ function PortalUsersCard({
   pendingInvites: PendingInvite[];
 }) {
   const [showForm, setShowForm] = useState(false);
-  const [state, formAction] = useFormState<InviteClientUserState, FormData>(inviteClientUser, {});
+  const [formKey, setFormKey] = useState(0);
+  const [state, formAction] = useFormState<CreateClientAccountState, FormData>(createClientUserAccount, {});
+  const [reset, setReset] = useState<ClientCredentials | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetting, startReset] = useTransition();
 
   return (
     <Card>
@@ -305,30 +311,61 @@ function PortalUsersCard({
         <CardTitle>Usuarios del portal</CardTitle>
         <Button variant="secondary" onClick={() => setShowForm((v) => !v)}>
           <Plus size={16} />
-          {showForm ? "Cerrar" : "Invitar"}
+          {showForm ? "Cerrar" : "Crear cuenta"}
         </Button>
       </div>
       <p className="mt-1 text-xs text-text-muted">
         Pueden entrar a su propio portal (tickets, contenido para aprobar, métricas, facturación) en{" "}
-        <code>/portal</code>.
+        <code>panel.novarix.agency/portal/login</code>.
       </p>
 
       {showForm && (
-        <form action={formAction} className="mt-4 grid gap-4 rounded-xl border border-border bg-surface-hover p-4 sm:grid-cols-3">
+        <form key={formKey} action={formAction} className="mt-4 grid gap-4 rounded-xl border border-border bg-surface-hover p-4 sm:grid-cols-2">
           <input type="hidden" name="client_id" value={clientId} />
-          <Input label="Email" name="email" type="email" required />
-          <Select label="Rol" name="client_role" defaultValue="member">
-            <option value="owner">Titular</option>
+          <Input label="Nombre y apellido" name="full_name" required />
+          <Input label="Email (es su usuario)" name="email" type="email" required />
+          <Select label="Rol" name="client_role" defaultValue="owner">
+            <option value="owner">Titular (puede sumar compañeros)</option>
             <option value="member">Miembro</option>
           </Select>
-          {state.error && <p className="text-sm text-danger sm:col-span-3">{state.error}</p>}
-          <div className="sm:col-span-3">
-            <SubmitButton label="Enviar invitación" pendingLabel="Enviando…" />
+          <Input label="Contraseña (opcional)" name="password" type="text" autoComplete="off" placeholder="Vacío = se genera una segura" />
+          <label className="flex items-center gap-2 text-sm text-text-primary sm:col-span-2">
+            <input type="checkbox" name="must_change" defaultChecked />
+            Pedirle que la cambie la primera vez que entra
+          </label>
+          {state.error && <p className="text-sm text-danger sm:col-span-2">{state.error}</p>}
+          <div className="sm:col-span-2">
+            <SubmitButton label="Crear cuenta" pendingLabel="Creando…" />
           </div>
         </form>
       )}
 
-      {state.sent && <InviteLinkBox email={state.sent.email} link={state.sent.link} emailed={state.sent.emailed} />}
+      {state.created && (
+        <CredentialsBox
+          title={`Cuenta creada para ${state.created.full_name}`}
+          fullName={state.created.full_name}
+          email={state.created.email}
+          password={state.created.password}
+          loginUrl={state.created.login_url}
+          mustChange={state.created.must_change}
+          onClose={() => {
+            setShowForm(false);
+            setFormKey((k) => k + 1);
+          }}
+        />
+      )}
+      {reset && (
+        <CredentialsBox
+          title={`Nueva contraseña para ${reset.full_name}`}
+          fullName={reset.full_name}
+          email={reset.email}
+          password={reset.password}
+          loginUrl={reset.login_url}
+          mustChange={reset.must_change}
+          onClose={() => setReset(null)}
+        />
+      )}
+      {resetError && <p className="mt-2 text-sm text-danger">{resetError}</p>}
 
       <ul className="mt-4 divide-y divide-border">
         {companyUsers.length === 0 && <p className="text-sm text-text-muted">Sin accesos al portal todavía.</p>}
@@ -343,6 +380,22 @@ function PortalUsersCard({
                 {CLIENT_PORTAL_ROLE_LABELS[u.client_role as ClientPortalRole]}
               </Badge>
               {!u.active && <Badge tone="warning">Inactivo</Badge>}
+              <button
+                type="button"
+                disabled={resetting}
+                onClick={() => {
+                  if (!confirm(`¿Generar una contraseña nueva para ${u.full_name}? La actual deja de funcionar.`)) return;
+                  startReset(async () => {
+                    setResetError(null);
+                    const res = await resetClientUserPassword(u.id, clientId);
+                    if (res.error) setResetError(res.error);
+                    else if (res.created) setReset(res.created);
+                  });
+                }}
+                className="text-xs text-text-muted underline hover:text-text-primary"
+              >
+                Nueva contraseña
+              </button>
               <form action={setClientUserActive}>
                 <input type="hidden" name="id" value={u.id} />
                 <input type="hidden" name="client_id" value={clientId} />

@@ -7,7 +7,8 @@ import { cookies } from "next/headers";
 import { query, queryOne } from "@/lib/db";
 import { requirePermission } from "@/lib/auth/requirePermission";
 import { getSessionProfile } from "@/lib/auth/getSessionProfile";
-import { deleteOtherSessionsForUser } from "@/lib/auth/session";
+import { randomBytes } from "crypto";
+import { deleteOtherSessionsForUser, hashPassword } from "@/lib/auth/session";
 import { createSignedToken } from "@/lib/auth/signedToken";
 import { ADMIN_PREVIEW_COOKIE, ADMIN_PREVIEW_TTL_MS } from "@/lib/auth/requireClient";
 import { createClientInvite, inviteEmailHtml } from "@/lib/auth/clientInvite";
@@ -324,6 +325,127 @@ export async function cancelInvite(formData: FormData): Promise<void> {
     ip: getClientIp(),
   });
   if (client_id) revalidatePath(`/clients/${client_id}`);
+}
+
+// ===== Cuentas del portal creadas por Novarix (sin invitacion) =====
+
+const PORTAL_LOGIN_URL = "https://panel.novarix.agency/portal/login";
+
+export interface ClientCredentials {
+  full_name: string;
+  email: string;
+  password: string;
+  login_url: string;
+  must_change: boolean;
+}
+
+export interface CreateClientAccountState extends ActionState {
+  created?: ClientCredentials;
+}
+
+/** Contraseña aleatoria legible (sin caracteres que se confunden: 0/O, 1/l/I). */
+function generatePortalPassword(): string {
+  const alphabet = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = randomBytes(12);
+  let out = "";
+  for (let i = 0; i < 12; i++) out += alphabet[bytes[i] % alphabet.length];
+  return `${out.slice(0, 4)}-${out.slice(4, 8)}-${out.slice(8, 12)}`;
+}
+
+const accountSchema = z.object({
+  client_id: z.string().uuid(),
+  full_name: z.string().trim().min(1, { message: "Poné el nombre." }).max(120),
+  email: z.string().trim().toLowerCase().email({ message: "Email inválido." }),
+  client_role: z.enum(["owner", "member"]),
+  password: z
+    .string()
+    .trim()
+    .max(100)
+    .refine((v) => v === "" || v.length >= 8, { message: "La contraseña tiene que tener al menos 8 caracteres." }),
+  must_change: z.boolean(),
+});
+
+/**
+ * Admin/marketing_admin crean la cuenta del portal del cliente directamente
+ * (email + contraseña), sin invitacion. Si no se escribe contraseña, se
+ * genera una. Las credenciales se muestran una sola vez para pasarlas.
+ */
+export async function createClientUserAccount(
+  _prevState: CreateClientAccountState,
+  formData: FormData
+): Promise<CreateClientAccountState> {
+  const { userId: actorId } = await requirePermission("clients.manage");
+  const parsed = accountSchema.safeParse({
+    client_id: formData.get("client_id"),
+    full_name: formData.get("full_name"),
+    email: formData.get("email"),
+    client_role: formData.get("client_role") || "member",
+    password: String(formData.get("password") ?? ""),
+    must_change: formData.get("must_change") === "on",
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Revisá los datos." };
+  const d = parsed.data;
+
+  const client = await queryOne<{ name: string }>("select name from clients where id = $1", [d.client_id]);
+  if (!client) return { error: "Cliente no encontrado." };
+  const existing = await queryOne<{ role: string }>("select role::text as role from profiles where email = $1", [d.email]);
+  if (existing) {
+    return {
+      error:
+        existing.role === "client"
+          ? "Ya existe una cuenta de portal con ese email (puede ser de otro cliente)."
+          : "Ese email ya es de un usuario del equipo de Novarix.",
+    };
+  }
+
+  const password = d.password || generatePortalPassword();
+  const [profile] = await query<{ id: string }>(
+    `insert into profiles (email, password_hash, full_name, role, must_change_password)
+     values ($1, $2, $3, 'client', $4) returning id`,
+    [d.email, hashPassword(password), d.full_name, d.must_change]
+  );
+  await query(
+    "insert into client_users (profile_id, client_id, client_role, active) values ($1, $2, $3, true)",
+    [profile.id, d.client_id, d.client_role]
+  );
+  // Si habia una invitacion pendiente para ese email, ya no hace falta.
+  await query("delete from client_invites where email = $1 and accepted_at is null", [d.email]);
+
+  await recordAudit({
+    actorId,
+    action: "client_users.create_account",
+    entityType: "client",
+    entityId: d.client_id,
+    after: { email: d.email, full_name: d.full_name, client_role: d.client_role, must_change: d.must_change },
+    ip: getClientIp(),
+  });
+
+  revalidatePath(`/clients/${d.client_id}`);
+  return {
+    created: { full_name: d.full_name, email: d.email, password, login_url: PORTAL_LOGIN_URL, must_change: d.must_change },
+  };
+}
+
+/** Nueva contraseña temporal para un usuario del portal (cierra sus sesiones abiertas). */
+export async function resetClientUserPassword(clientUserId: string, clientId: string): Promise<{ error?: string; created?: ClientCredentials }> {
+  const { userId: actorId } = await requirePermission("clients.manage");
+  const row = await queryOne<{ profile_id: string; email: string; full_name: string }>(
+    `select cu.profile_id, p.email, p.full_name from client_users cu join profiles p on p.id = cu.profile_id
+     where cu.id = $1 and cu.client_id = $2 and p.role = 'client'`,
+    [clientUserId, clientId]
+  );
+  if (!row) return { error: "No existe ese usuario." };
+  const password = generatePortalPassword();
+  await query("update profiles set password_hash = $1, must_change_password = true where id = $2", [hashPassword(password), row.profile_id]);
+  await deleteOtherSessionsForUser(row.profile_id);
+  await recordAudit({
+    actorId,
+    action: "client_users.reset_password",
+    entityType: "client_user",
+    entityId: clientUserId,
+    ip: getClientIp(),
+  });
+  return { created: { full_name: row.full_name, email: row.email, password, login_url: PORTAL_LOGIN_URL, must_change: true } };
 }
 
 /** El owner también puede desactivar compañeros; admin/marketing_admin a cualquiera. Nunca borra el perfil. */
