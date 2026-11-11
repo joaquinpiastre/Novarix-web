@@ -31,11 +31,11 @@ beforeEach(() => {
 });
 
 describe("herramientas de IA — permisos", () => {
-  it("marketing_admin no ve herramientas de finanzas, tareas ni recordatorios", () => {
+  it("marketing_admin gestiona tareas, pero no ve finanzas ni recordatorios", () => {
     const names = toolDefinitionsFor(profile("marketing_admin")).map((t) => t.name);
     expect(names).toContain("crear_contenido");
+    expect(names).toContain("crear_tarea");
     expect(names).not.toContain("ver_finanzas");
-    expect(names).not.toContain("crear_tarea");
     expect(names).not.toContain("crear_recordatorio");
   });
 
@@ -74,7 +74,7 @@ describe("herramientas de IA — permisos", () => {
   });
 
   it("listar_tareas sin tasks.manage solo ve las propias", async () => {
-    await runTool(ctx("marketing_admin"), "listar_tareas", { asignado_a: "99999999-9999-4999-8999-999999999999" });
-    expect(queryMock.mock.calls[0][1][0]).toBe("marketing_admin-1");
+    await runTool(ctx("marketing"), "listar_tareas", { asignado_a: "99999999-9999-4999-8999-999999999999" });
+    expect(queryMock.mock.calls[0][1][0]).toBe("marketing-1");
   });
 });

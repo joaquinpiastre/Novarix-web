@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useFormState, useFormStatus } from "react-dom";
-import { Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Input";
@@ -10,7 +10,7 @@ import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import { formatDate } from "@/lib/utils/dates";
 import { TASK_STATUS_LABELS, TASK_STATUS_ORDER, ROLE_LABELS, type TaskStatus, type UserRole } from "@/lib/types/domain";
-import { createTask, deleteTask, updateTaskStatus, type ActionState } from "./actions";
+import { createTask, deleteTask, updateTask, updateTaskStatus, type ActionState } from "./actions";
 
 export interface TaskRow {
   id: string;
@@ -67,27 +67,109 @@ function NewTaskForm({ collaborators }: { collaborators: Collaborator[] }) {
   );
 }
 
+function EditTaskForm({
+  task,
+  collaborators,
+  onDone,
+}: {
+  task: TaskRow;
+  collaborators: Collaborator[];
+  onDone: () => void;
+}) {
+  const [state, formAction] = useFormState<ActionState, FormData>(async (prev, formData) => {
+    const res = await updateTask(task.id, prev, formData);
+    if (!res.error) onDone();
+    return res;
+  }, {});
+  return (
+    <Card className="flex flex-col gap-3">
+      <form action={formAction} className="flex flex-col gap-3">
+        <Input label="Título" name="title" defaultValue={task.title} required />
+        <Textarea label="Descripción" name="description" rows={2} defaultValue={task.description ?? ""} />
+        <Select label="Asignar a" name="assigned_to" defaultValue={task.assigned_to ?? ""}>
+          <option value="">Sin asignar</option>
+          {collaborators.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.full_name} · {ROLE_LABELS[c.role]}
+            </option>
+          ))}
+        </Select>
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Vencimiento" name="due_date" type="date" defaultValue={task.due_date?.slice(0, 10) ?? ""} />
+          <Select label="Estado" name="status" defaultValue={task.status}>
+            {TASK_STATUS_ORDER.map((s) => (
+              <option key={s} value={s}>
+                {TASK_STATUS_LABELS[s]}
+              </option>
+            ))}
+          </Select>
+        </div>
+        {state.error && <p className="text-sm text-danger">{state.error}</p>}
+        <div className="flex gap-2">
+          <SaveButton />
+          <Button type="button" variant="ghost" onClick={onDone}>
+            Cancelar
+          </Button>
+        </div>
+      </form>
+    </Card>
+  );
+}
+
+function SaveButton() {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" disabled={pending}>
+      {pending ? "Guardando…" : "Guardar"}
+    </Button>
+  );
+}
+
 function TaskCard({
   task,
   canEdit,
   isAdmin,
+  collaborators,
 }: {
   task: TaskRow;
   canEdit: boolean;
   isAdmin: boolean;
+  collaborators: Collaborator[];
 }) {
   const [isPending, startTransition] = useTransition();
+  const [editing, setEditing] = useState(false);
+
+  if (editing) return <EditTaskForm task={task} collaborators={collaborators} onDone={() => setEditing(false)} />;
 
   return (
     <Card className="flex flex-col gap-2">
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-medium text-text-primary">{task.title}</p>
         {isAdmin && (
-          <form action={deleteTask.bind(null, task.id)}>
-            <button type="submit" className="text-text-muted hover:text-danger" aria-label="Eliminar tarea">
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-text-muted hover:bg-surface-hover hover:text-text-primary"
+              aria-label="Editar tarea"
+            >
+              <Pencil size={15} />
+            </button>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => {
+                if (!confirm(`¿Eliminar la tarea "${task.title}"?`)) return;
+                startTransition(() => {
+                  deleteTask(task.id);
+                });
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-text-muted hover:bg-surface-hover hover:text-danger"
+              aria-label="Eliminar tarea"
+            >
               <Trash2 size={15} />
             </button>
-          </form>
+          </div>
         )}
       </div>
       {task.description && <p className="text-xs text-text-muted">{task.description}</p>}
@@ -166,6 +248,7 @@ export function TasksClient({
                   key={t.id}
                   task={t}
                   isAdmin={isAdmin}
+                  collaborators={collaborators}
                   canEdit={isAdmin || t.assigned_to === currentUserId}
                 />
               ))}

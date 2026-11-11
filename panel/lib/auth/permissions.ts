@@ -95,6 +95,9 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "tickets.manage_all",
     "ai.use",
     "trends.use",
+    // Tablero de tareas: crea, edita, elimina y ve las de todo el equipo, igual que admin.
+    "tasks.manage",
+    "tasks.update_status",
   ],
   // Gestiona proyectos y activos tecnicos de todos los clientes
   // (dominio/hosting/SSL, bots de GHL) -- es el area tecnica. Los tickets

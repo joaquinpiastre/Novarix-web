@@ -49,8 +49,8 @@ const MATRIX: Record<Permission, Row> = {
   "client_services.manage": { admin: true, programmer: false, marketing: false, marketing_admin: true, client: false },
   "client_team.manage": { admin: true, programmer: false, marketing: false, marketing_admin: true, client: false },
   "payments_in.manage": { admin: true, programmer: false, marketing: false, marketing_admin: false, client: false },
-  "tasks.manage": { admin: true, programmer: false, marketing: false, marketing_admin: false, client: false },
-  "tasks.update_status": { admin: true, programmer: false, marketing: false, marketing_admin: false, client: false },
+  "tasks.manage": { admin: true, programmer: false, marketing: false, marketing_admin: true, client: false },
+  "tasks.update_status": { admin: true, programmer: false, marketing: false, marketing_admin: true, client: false },
   "reminders.manage": { admin: true, programmer: false, marketing: false, marketing_admin: false, client: false },
   "users.manage": { admin: true, programmer: false, marketing: false, marketing_admin: false, client: false },
   "users.create_marketing": { admin: true, programmer: false, marketing: false, marketing_admin: true, client: false },
@@ -112,9 +112,11 @@ describe("helpers de scope", () => {
     expect(scopePaymentsOutFor(marketing).all).toBe(false);
   });
 
-  it("scopeTasksFor: all=true solo para admin", () => {
+  it("scopeTasksFor: all=true para admin y marketing_admin", () => {
     expect(scopeTasksFor(admin).all).toBe(true);
+    expect(scopeTasksFor(marketingAdmin).all).toBe(true);
     expect(scopeTasksFor(programmer).all).toBe(false);
+    expect(scopeTasksFor(marketing).all).toBe(false);
   });
 
   it("scopeClientsFor: all=true para admin y marketing_admin", () => {
