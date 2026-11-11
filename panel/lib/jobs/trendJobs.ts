@@ -3,6 +3,7 @@ import { getBoss, TREND_ALERTS_JOB, TREND_MAINTENANCE_JOB, TREND_RESUME_JOB, TRE
 import { findStaleSearches, runDueSavedSearches, runSearchJob } from "@/lib/trends/pipeline";
 import { enforceYoutubeRetention } from "@/lib/trends/maintenance";
 import { notifyUpcomingCommercialDates } from "@/lib/ideas/commercialDatesJob";
+import { cleanupPendingUploads } from "@/lib/library/maintenance";
 import { log } from "@/lib/log";
 
 interface SearchJobData {
@@ -31,6 +32,7 @@ export async function startTrendJobs(): Promise<void> {
     log.info("trend maintenance: arrancando");
     await enforceYoutubeRetention();
     await notifyUpcomingCommercialDates();
+    await cleanupPendingUploads();
   });
   await boss.schedule(TREND_MAINTENANCE_JOB, "30 7 * * *", {}, { tz: "America/Argentina/Mendoza" });
 

@@ -1,6 +1,6 @@
 import "server-only";
 import { query, queryOne } from "@/lib/db";
-import { can } from "@/lib/auth/permissions";
+import { can, type Permission } from "@/lib/auth/permissions";
 import { requirePermission } from "@/lib/auth/requirePermission";
 import type { Profile } from "@/lib/types/domain";
 
@@ -19,7 +19,12 @@ export interface TrendsAccess {
 }
 
 export async function requireTrendsAccess(): Promise<TrendsAccess> {
-  const { userId, profile } = await requirePermission("trends.use");
+  return requireScopedAccess("trends.use");
+}
+
+/** Mismo alcance que el Radar (todo para admin/marketing_admin; marketing solo sus clientes) con otro permiso. */
+export async function requireScopedAccess(permission: Permission): Promise<TrendsAccess> {
+  const { userId, profile } = await requirePermission(permission);
   const full = can(profile, "clients.manage");
   const clientIds = full
     ? []

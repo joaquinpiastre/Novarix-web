@@ -18,6 +18,7 @@ import {
   Radar,
   Lightbulb,
   Gauge,
+  FolderOpen,
   type LucideIcon,
 } from "lucide-react";
 
@@ -58,6 +59,13 @@ export const NAV_LINKS: NavLink[] = [
     permission: "marketing.view_all",
     // marketing (no admin) ve solo lo que tiene delegado, en modo lectura.
     extraCheck: (profile) => profile.role === "marketing",
+  },
+  {
+    href: "/marketing/biblioteca",
+    label: "Biblioteca",
+    icon: FolderOpen,
+    // marketing la ve acotada a sus clientes asignados.
+    permission: "library.use",
   },
   {
     href: "/marketing/radar",

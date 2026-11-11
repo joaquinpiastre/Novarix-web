@@ -1,6 +1,7 @@
 import "server-only";
 import { randomUUID } from "crypto";
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
+import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 // Bucket S3-compatible de Railway. Las variables (BUCKET_ENDPOINT,
@@ -65,4 +66,46 @@ export async function getSignedDownloadUrl(key: string, filename: string): Promi
 export async function deleteObject(key: string): Promise<void> {
   const client = getClient();
   await client.send(new DeleteObjectCommand({ Bucket: getBucketName(), Key: key }));
+}
+
+/**
+ * Subida directa desde el navegador (POST firmado, como recomienda Railway):
+ * el archivo no pasa por el server. Limita tamaño y tipo en la propia firma.
+ */
+export async function createPresignedUpload(
+  key: string,
+  contentType: string,
+  maxBytes: number
+): Promise<{ url: string; fields: Record<string, string> }> {
+  return createPresignedPost(getClient(), {
+    Bucket: getBucketName(),
+    Key: key,
+    Conditions: [
+      ["content-length-range", 1, maxBytes],
+      ["eq", "$Content-Type", contentType],
+    ],
+    Fields: { "Content-Type": contentType },
+    Expires: 60 * 60,
+  });
+}
+
+/** Tamaño real del objeto subido, o null si no existe. */
+export async function headObjectSize(key: string): Promise<number | null> {
+  try {
+    const res = await getClient().send(new HeadObjectCommand({ Bucket: getBucketName(), Key: key }));
+    return res.ContentLength ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** URL firmada para ver el archivo en el navegador (vista previa de imagen/video). */
+export async function getSignedInlineUrl(key: string, filename: string, contentType: string, expiresIn = 3600): Promise<string> {
+  const command = new GetObjectCommand({
+    Bucket: getBucketName(),
+    Key: key,
+    ResponseContentDisposition: `inline; filename="${filename.replace(/"/g, "")}"`,
+    ResponseContentType: contentType,
+  });
+  return getSignedUrl(getClient(), command, { expiresIn });
 }

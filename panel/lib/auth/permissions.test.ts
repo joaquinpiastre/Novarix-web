@@ -61,6 +61,7 @@ const MATRIX: Record<Permission, Row> = {
   "ai.use": { admin: true, programmer: false, marketing: false, marketing_admin: true, client: false },
   "trends.use": { admin: true, programmer: false, marketing: true, marketing_admin: true, client: false },
   "usage.view": { admin: true, programmer: false, marketing: false, marketing_admin: false, client: false },
+  "library.use": { admin: true, programmer: false, marketing: true, marketing_admin: true, client: false },
 };
 
 describe("can() — matriz rol x permiso (sin resource)", () => {
