@@ -8,6 +8,8 @@ import { CONTENT_FORMAT_VALUES, formatLabel } from "@/lib/marketing/content";
 import { recordAiUsage, type UsageContext } from "@/lib/usage/record";
 import { HOOK_TYPES, hookLabel } from "@/lib/trends/types";
 import { AD_OBJECTIVES, PILLARS, type IdeaCard, type IdeaTool } from "./types";
+import { todayInMendoza, upcomingCommercialDates } from "./commercialDates";
+import { customCommercialDates } from "./commercialDatesJob";
 
 // Generadores de la caja de ideas. Todos usan el contexto del cliente (rubro,
 // kit de marca, plan vigente, lo que ya funciono y las ultimas referencias del
@@ -23,37 +25,50 @@ const SYSTEM =
 const formatEnum = z.enum(CONTENT_FORMAT_VALUES);
 const shotSchema = z.object({ time: z.string(), shot: z.string(), on_screen_text: z.string(), voiceover: z.string() });
 
+// Todo es opcional: si un campo viene vacio, la IA decide sola con el
+// contexto del cliente (plan, kit de marca, lo que funciono, Radar, fechas
+// proximas). `prompt` son indicaciones libres del equipo para cualquier herramienta.
+const prompt = z.string().trim().max(2000).default("");
+const optionalText = (max: number) => z.string().trim().max(max).default("");
+
 export const toolInputSchemas = {
   ideas: z.object({
-    pillars: z.array(z.enum(PILLARS.map((p) => p.value) as [string, ...string[]])).min(1, { message: "Elegí al menos un pilar." }),
+    pillars: z.array(z.enum(PILLARS.map((p) => p.value) as [string, ...string[]])).default([]),
     per_pillar: z.coerce.number().int().min(1).max(5).default(3),
-    topic: z.string().trim().max(500).default(""),
+    topic: optionalText(500),
+    prompt,
   }),
   ganchos: z.object({
-    topic: z.string().trim().min(3, { message: "Contá de qué es el video." }).max(500),
+    topic: optionalText(500),
     count: z.coerce.number().int().min(5).max(20).default(12),
+    prompt,
   }),
   guion: z.object({
-    topic: z.string().trim().min(3, { message: "Contá la idea del video." }).max(1000),
+    topic: optionalText(1000),
     duration_seconds: z.coerce.number().int().min(7).max(180).default(30),
     network: z.string().trim().max(30).default("instagram"),
+    prompt,
   }),
   reciclador: z.object({
-    source: z.string().trim().min(5, { message: "Pegá el link o describí el video/post que funcionó." }).max(3000),
-    metrics: z.string().trim().max(500).default(""),
+    source: optionalText(3000),
+    metrics: optionalText(500),
+    prompt,
   }),
   hashtags: z.object({
-    topic: z.string().trim().min(3, { message: "Contá el tema." }).max(500),
+    topic: optionalText(500),
+    prompt,
   }),
   fecha: z.object({
     date_name: z.string().trim().min(2).max(200),
     date: z.string().trim().max(20),
-    hint: z.string().trim().max(500).default(""),
+    hint: optionalText(500),
+    prompt,
   }),
   ads: z.object({
-    objective: z.enum(AD_OBJECTIVES.map((o) => o.value) as [string, ...string[]]),
-    offer: z.string().trim().min(3, { message: "Contá qué se promociona." }).max(1000),
-    budget: z.string().trim().max(100).default(""),
+    objective: z.union([z.enum(AD_OBJECTIVES.map((o) => o.value) as [string, ...string[]]), z.literal("")]).default(""),
+    offer: optionalText(1000),
+    budget: optionalText(100),
+    prompt,
   }),
 } satisfies Record<IdeaTool, z.ZodTypeAny>;
 
@@ -115,7 +130,16 @@ async function hashtagData(clientId: string, topic: string): Promise<string> {
          group by tag order by count(*) desc, avg(v.views) desc nulls last limit 25`,
         [words.map((w) => `%${w}%`)]
       )
-    : [];
+    : // Sin tema: hashtags de los videos que salieron en las busquedas del Radar de este cliente.
+      await query<{ tag: string; videos: number; avg_views: number | null }>(
+        `select tag, count(distinct v.id)::int as videos, avg(v.views)::bigint as avg_views
+         from trend_search_results r
+         join trend_searches s on s.id = r.search_id
+         join trend_videos v on v.id = r.video_id, unnest(v.hashtags) tag
+         where s.client_id = $1 and not r.discarded and s.created_at > now() - interval '90 days'
+         group by tag order by count(distinct v.id) desc, avg(v.views) desc nulls last limit 25`,
+        [clientId]
+      );
   const own = await query<{ tag: string; posts: number; avg_views: number | null }>(
     `select lower(m[1]) as tag, count(*)::int as posts, avg(views)::bigint as avg_views
      from social_posts, regexp_matches(coalesce(caption, ''), '#([[:alnum:]_]+)', 'g') m
@@ -137,28 +161,35 @@ async function hashtagData(clientId: string, topic: string): Promise<string> {
   ].join("\n\n");
 }
 
+const AUTO = "elegilo vos según el contexto del cliente (plan vigente, lo que mejor le funcionó, referencias del Radar y fechas próximas)";
+
 function promptFor(tool: IdeaTool, input: Record<string, unknown>, extra: string): string {
   switch (tool) {
     case "ideas": {
       const i = input as z.output<typeof toolInputSchemas.ideas>;
-      const labels = i.pillars.map((p) => PILLARS.find((x) => x.value === p)?.label ?? p).join(", ");
-      return `Generá ${i.per_pillar} ideas de contenido por cada pilar: ${labels}.${i.topic ? ` Tema o foco: ${i.topic}.` : ""} En "pillar" poné el nombre del pilar. Cada idea con un gancho concreto y el formato sugerido.`;
+      const pillars = i.pillars.length
+        ? i.pillars.map((p) => PILLARS.find((x) => x.value === p)?.label ?? p).join(", ")
+        : null;
+      return pillars
+        ? `Generá ${i.per_pillar} ideas de contenido por cada pilar: ${pillars}. Tema o foco: ${i.topic || AUTO}. En "pillar" poné el nombre del pilar. Cada idea con un gancho concreto y el formato sugerido.`
+        : `Generá entre 8 y 12 ideas de contenido para este cliente. Elegí vos los pilares que más le convienen ahora (educativo, producto, detrás de escena, testimonio, tendencia, promo). Tema o foco: ${i.topic || AUTO}. En "pillar" poné el nombre del pilar. Cada idea con un gancho concreto y el formato sugerido.`;
     }
     case "ganchos": {
       const i = input as z.output<typeof toolInputSchemas.ganchos>;
-      return `Escribí ${i.count} ganchos distintos (primeros 3 segundos) para un video sobre: ${i.topic}. Variá los tipos (pregunta, resultado primero, polémica, POV, antes/después, tutorial, humor, testimonio, lista) para poder testear variantes. En "why" explicá en una línea por qué puede funcionar.`;
+      return `Escribí ${i.count} ganchos distintos (primeros 3 segundos) para un video sobre: ${i.topic || `un tema que ${AUTO}; decí cuál elegiste en el "why" del primero`}. Variá los tipos (pregunta, resultado primero, polémica, POV, antes/después, tutorial, humor, testimonio, lista) para poder testear variantes. En "why" explicá en una línea por qué puede funcionar.`;
     }
     case "guion": {
       const i = input as z.output<typeof toolInputSchemas.guion>;
-      return `Escribí el guion completo de un video de ${i.duration_seconds} segundos para ${i.network} sobre: ${i.topic}. Gancho de 0 a 3 s, desarrollo, CTA, texto en pantalla y plano por plano con tiempos que sumen la duración. Sugerí el tipo de audio y escribí el caption con hashtags.`;
+      return `Escribí el guion completo de un video de ${i.duration_seconds} segundos para ${i.network} sobre: ${i.topic || `la idea con más potencial para este cliente ahora (${AUTO})`}. Gancho de 0 a 3 s, desarrollo, CTA, texto en pantalla y plano por plano con tiempos que sumen la duración. Sugerí el tipo de audio y escribí el caption con hashtags.`;
     }
     case "reciclador": {
       const i = input as z.output<typeof toolInputSchemas.reciclador>;
-      return `Este contenido funcionó:\n<contenido>\n${i.source}\n</contenido>${i.metrics ? `\nMétricas: ${i.metrics}` : ""}\nSacá 5 variaciones que mantengan lo que lo hizo funcionar pero cambien el ángulo, el formato o el gancho, para publicar en las próximas semanas sin repetirse.`;
+      const source = i.source || extra;
+      return `Este contenido funcionó:\n<contenido>\n${source}\n</contenido>${i.metrics ? `\nMétricas: ${i.metrics}` : ""}\nSacá 5 variaciones que mantengan lo que lo hizo funcionar pero cambien el ángulo, el formato o el gancho, para publicar en las próximas semanas sin repetirse.`;
     }
     case "hashtags": {
       const i = input as z.output<typeof toolInputSchemas.hashtags>;
-      return `${extra}\n\nCon esos datos (y tu criterio), proponé un set de hashtags y palabras clave para contenido sobre: ${i.topic}. Mezclá amplios, de nicho, locales (Mendoza/Argentina) y de marca. En "notes" aclará qué sale de datos reales y qué es criterio tuyo.`;
+      return `${extra}\n\nCon esos datos (y tu criterio), proponé un set de hashtags y palabras clave para contenido sobre: ${i.topic || `los temas principales del cliente (${AUTO})`}. Mezclá amplios, de nicho, locales (Mendoza/Argentina) y de marca. En "notes" aclará qué sale de datos reales y qué es criterio tuyo.`;
     }
     case "fecha": {
       const i = input as z.output<typeof toolInputSchemas.fecha>;
@@ -166,10 +197,40 @@ function promptFor(tool: IdeaTool, input: Record<string, unknown>, extra: string
     }
     case "ads": {
       const i = input as z.output<typeof toolInputSchemas.ads>;
-      const label = AD_OBJECTIVES.find((o) => o.value === i.objective)?.label ?? i.objective;
-      return `Ideas de campañas de Meta Ads. Objetivo: ${label}. Qué se promociona: ${i.offer}.${i.budget ? ` Presupuesto: ${i.budget}.` : ""}\nProponé 3 ángulos distintos, cada uno con público sugerido, idea de creatividad, CTA y 2 variantes de copy (texto principal, título y descripción) listas para cargar en el Administrador de anuncios. Cuidá las políticas de anuncios de Meta (sin promesas de resultados ni atributos personales).`;
+      const label = i.objective ? AD_OBJECTIVES.find((o) => o.value === i.objective)?.label ?? i.objective : null;
+      return `Ideas de campañas de Meta Ads. Objetivo: ${label ?? `el más conveniente según el plan del cliente (${AUTO}); decí cuál elegiste`}. Qué se promociona: ${i.offer || `lo que tenga más sentido promocionar ahora (${AUTO})`}.${i.budget ? ` Presupuesto: ${i.budget}.` : ""}\nProponé 3 ángulos distintos, cada uno con público sugerido, idea de creatividad, CTA y 2 variantes de copy (texto principal, título y descripción) listas para cargar en el Administrador de anuncios. Cuidá las políticas de anuncios de Meta (sin promesas de resultados ni atributos personales).`;
     }
   }
+}
+
+/** Fechas comerciales de los proximos 45 dias, para que la IA las tenga en cuenta cuando elige sola. */
+async function upcomingDatesText(clientId: string): Promise<string> {
+  const today = todayInMendoza();
+  const dates = upcomingCommercialDates(today, 45, await customCommercialDates(clientId));
+  if (dates.length === 0) return "";
+  return `<fechas_proximas>\n${dates.map((d) => `- ${d.date}: ${d.name}${d.estimated ? " (estimada)" : ""}`).join("\n")}\n</fechas_proximas>`;
+}
+
+/** Para el reciclador sin contenido pegado: el post propio que mejor funciono, o la ultima referencia del Radar. */
+async function bestContentForRecycling(clientId: string): Promise<string> {
+  const own = await query<{ caption: string | null; views: string | null; shares: string | null; saved: string | null; media_product_type: string | null }>(
+    `select caption, views, shares, saved, media_product_type from social_posts
+     where client_id = $1 and posted_at > now() - interval '180 days' and caption is not null
+     order by coalesce(views, 0) desc, coalesce(total_interactions, engagement, 0) desc limit 1`,
+    [clientId]
+  );
+  if (own[0]) {
+    const o = own[0];
+    return `Publicación propia del cliente que mejor funcionó (${o.media_product_type ?? "post"}, ${o.views ?? "?"} vistas, ${o.shares ?? "?"} compartidos, ${o.saved ?? "?"} guardados):\n${o.caption}`;
+  }
+  const ref = await query<{ caption: string | null; url: string; why: string | null }>(
+    `select v.caption, v.url, a.analysis->'why_it_worked'->>0 as why
+     from trend_analyses a join trend_videos v on v.id = a.video_id
+     where a.client_id = $1 order by a.created_at desc limit 1`,
+    [clientId]
+  );
+  if (ref[0]) return `Referencia viral del Radar (${ref[0].url}):\n${ref[0].caption ?? ""}\nPor qué funcionó: ${ref[0].why ?? "?"}`;
+  return "No hay contenido previo registrado: elegí vos un formato que suele funcionar muy bien en el rubro del cliente y reciclalo.";
 }
 
 function toCards(tool: IdeaTool, out: unknown): IdeaCard[] {
@@ -272,7 +333,14 @@ export async function runIdeaTool(
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
   const input = parsed.data as Record<string, unknown>;
   const context = await buildClientContext(clientId, { recentCopies: true, performance: true });
-  const extra = tool === "hashtags" ? await hashtagData(clientId, String(input.topic)) : "";
+  const extra =
+    tool === "hashtags"
+      ? await hashtagData(clientId, String(input.topic || ""))
+      : tool === "reciclador" && !input.source
+        ? await bestContentForRecycling(clientId)
+        : "";
+  const dates = tool === "fecha" ? "" : await upcomingDatesText(clientId);
+  const teamPrompt = String(input.prompt ?? "").trim();
 
   const schema = outputSchemas[tool];
   const response = await getAiClient().beta.messages.parse({
@@ -281,7 +349,21 @@ export async function runIdeaTool(
     ...AI_FALLBACK,
     output_config: { effort: tool === "guion" || tool === "ads" ? "medium" : "low", format: betaZodOutputFormat(schema) },
     system: SYSTEM,
-    messages: [{ role: "user", content: `<cliente>\n${context}\n</cliente>\n\n${promptFor(tool, input, extra)}` }],
+    messages: [
+      {
+        role: "user",
+        content: [
+          `<cliente>\n${context}\n</cliente>`,
+          dates,
+          promptFor(tool, input, extra),
+          teamPrompt
+            ? `<indicaciones_del_equipo>\n${teamPrompt}\n</indicaciones_del_equipo>\nSeguí estas indicaciones del equipo de Novarix: tienen prioridad sobre tus elecciones automáticas.`
+            : "",
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
+      },
+    ],
   });
   await recordAiUsage(`ideas.${tool}`, AI_MODEL, response.usage, { ...usage, clientId });
   if (response.stop_reason === "refusal" || !response.parsed_output) return { error: "La IA no pudo generar esto. Probá reformularlo." };

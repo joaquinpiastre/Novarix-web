@@ -8,7 +8,7 @@ import { clientAccessError, requireTrendsAccess } from "@/lib/trends/access";
 import { generateDiagnostic } from "@/lib/trends/diagnostics";
 import { checkAiLimit } from "@/lib/trends/settings";
 
-export async function generateDiagnosticAction(clientId: string): Promise<{ error?: string }> {
+export async function generateDiagnosticAction(clientId: string, prompt = ""): Promise<{ error?: string }> {
   const access = await requireTrendsAccess();
   const accessError = clientAccessError(access, clientId);
   if (accessError) return { error: accessError };
@@ -16,7 +16,7 @@ export async function generateDiagnosticAction(clientId: string): Promise<{ erro
   const limit = await checkAiLimit(access.userId, access.profile.role);
   if (limit) return { error: limit };
   try {
-    const res = await generateDiagnostic(clientId, { profileId: access.userId });
+    const res = await generateDiagnostic(clientId, { profileId: access.userId }, String(prompt ?? ""));
     if (res.error) return { error: res.error };
     await recordAudit({ actorId: access.userId, action: "diagnostic.generate", entityType: "video_diagnostic", entityId: res.id ?? null, after: { client_id: clientId }, ip: getClientIp() });
   } catch (err) {

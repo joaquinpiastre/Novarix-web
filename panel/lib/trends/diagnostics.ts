@@ -183,7 +183,11 @@ export const diagnosticReportSchema = z.object({
 });
 export type DiagnosticReport = z.infer<typeof diagnosticReportSchema>;
 
-export async function generateDiagnostic(clientId: string, usage: UsageContext & { profileId: string }): Promise<{ id?: string; error?: string }> {
+export async function generateDiagnostic(
+  clientId: string,
+  usage: UsageContext & { profileId: string },
+  teamPrompt = ""
+): Promise<{ id?: string; error?: string }> {
   const { videos, stats } = await ownVideos(clientId);
   if (videos.length < 3) {
     return { error: "Hacen falta al menos 3 reels sincronizados de Meta para diagnosticar (revisá la conexión de Instagram del cliente)." };
@@ -217,7 +221,12 @@ export async function generateDiagnostic(clientId: string, usage: UsageContext &
             ? `<referentes_radar>\n${JSON.stringify(refs)}\n</referentes_radar>`
             : "<referentes_radar>Todavía no hay búsquedas del Radar para este cliente: compará solo contra buenas prácticas del formato.</referentes_radar>",
           "Armá el diagnóstico: patrones de los que peor y mejor rinden, diferencias contra referentes y exactamente 5 cambios accionables para el próximo mes.",
-        ].join("\n"),
+          teamPrompt.trim()
+            ? `<indicaciones_del_equipo>\n${teamPrompt.trim().slice(0, 2000)}\n</indicaciones_del_equipo>\nTené en cuenta estas indicaciones del equipo de Novarix.`
+            : "",
+        ]
+          .filter(Boolean)
+          .join("\n"),
       },
     ],
   });

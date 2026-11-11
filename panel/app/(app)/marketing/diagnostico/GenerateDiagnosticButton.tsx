@@ -4,20 +4,29 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { generateDiagnosticAction } from "./actions";
 
 export function GenerateDiagnosticButton({ clientId, hasReport }: { clientId: string; hasReport: boolean }) {
   const router = useRouter();
+  const [prompt, setPrompt] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   return (
-    <div className="flex flex-col items-start gap-1 sm:items-end">
+    <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[320px]">
+      <Input
+        label="Indicaciones para la IA (opcional)"
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        placeholder="Ej: enfocate en por qué bajó el alcance este mes"
+        maxLength={2000}
+      />
       <Button
         disabled={pending}
         onClick={() =>
           start(async () => {
             setError(null);
-            const res = await generateDiagnosticAction(clientId);
+            const res = await generateDiagnosticAction(clientId, prompt);
             if (res.error) setError(res.error);
             else router.refresh();
           })
