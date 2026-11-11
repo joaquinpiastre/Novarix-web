@@ -1,6 +1,6 @@
 import "server-only";
-import { getBoss, TREND_ALERTS_JOB, TREND_MAINTENANCE_JOB, TREND_SEARCH_JOB } from "./queue";
-import { runDueSavedSearches, runSearchJob } from "@/lib/trends/pipeline";
+import { getBoss, TREND_ALERTS_JOB, TREND_MAINTENANCE_JOB, TREND_RESUME_JOB, TREND_SEARCH_JOB } from "./queue";
+import { findStaleSearches, runDueSavedSearches, runSearchJob } from "@/lib/trends/pipeline";
 import { enforceYoutubeRetention } from "@/lib/trends/maintenance";
 import { notifyUpcomingCommercialDates } from "@/lib/ideas/commercialDatesJob";
 import { log } from "@/lib/log";
@@ -34,7 +34,23 @@ export async function startTrendJobs(): Promise<void> {
   });
   await boss.schedule(TREND_MAINTENANCE_JOB, "30 7 * * *", {}, { tz: "America/Argentina/Mendoza" });
 
+  // Busquedas cortadas a mitad de camino (ej. un deploy reinicio el server): se reanudan solas.
+  await boss.work(TREND_RESUME_JOB, async () => {
+    await resumeStaleSearches();
+  });
+  await boss.schedule(TREND_RESUME_JOB, "*/5 * * * *", {}, { tz: "America/Argentina/Mendoza" });
+  // Y una vez al arrancar, para no esperar al primer chequeo.
+  resumeStaleSearches().catch((err) => log.error("resume stale searches failed", { err: String(err) }));
+
   log.info("trend jobs registrados");
+}
+
+export async function resumeStaleSearches(): Promise<void> {
+  const stale = await findStaleSearches();
+  for (const id of stale) {
+    log.warn("trend search reanudada", { searchId: id });
+    await enqueueTrendSearch(id);
+  }
 }
 
 export async function enqueueTrendSearch(searchId: string): Promise<void> {

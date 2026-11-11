@@ -13,6 +13,7 @@ export const TICKET_DAILY_DIGEST_JOB = "ticket-daily-digest";
 export const TREND_SEARCH_JOB = "trend-search";
 export const TREND_ALERTS_JOB = "trend-saved-search-alerts";
 export const TREND_MAINTENANCE_JOB = "trend-maintenance-daily";
+export const TREND_RESUME_JOB = "trend-resume-stale";
 
 let starting: Promise<PgBoss> | null = null;
 
@@ -42,6 +43,7 @@ export async function getBoss(): Promise<PgBoss> {
     await boss.createQueue(TREND_SEARCH_JOB);
     await boss.createQueue(TREND_ALERTS_JOB);
     await boss.createQueue(TREND_MAINTENANCE_JOB);
+    await boss.createQueue(TREND_RESUME_JOB);
     global.__pgBoss = boss;
     log.info("pg-boss iniciado");
     return boss;

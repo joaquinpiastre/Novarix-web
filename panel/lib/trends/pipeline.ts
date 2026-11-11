@@ -38,7 +38,7 @@ export function cacheKeyFor(plan: SearchPlan): string {
 }
 
 async function setProgress(id: string, status: SearchStatus, progress: number, message: string): Promise<void> {
-  await query("update trend_searches set status = $2, progress = $3, progress_message = $4 where id = $1", [
+  await query("update trend_searches set status = $2, progress = $3, progress_message = $4, updated_at = now() where id = $1", [
     id,
     status,
     progress,
@@ -79,18 +79,50 @@ export async function tryReuseCache(searchId: string, plan: SearchPlan): Promise
   return true;
 }
 
-/** Corre la busqueda completa (o solo el analisis, si vino de cache o es un link manual). */
+/** Sin progreso durante este tiempo, una busqueda "en curso" se considera cortada (ej. reinicio por deploy). */
+export const STALE_AFTER_MINUTES = 5;
+const MAX_ATTEMPTS = 3;
+
+/**
+ * Corre la busqueda completa (o solo el analisis, si vino de cache o es un link manual).
+ * Es reanudable: si se corto a mitad de camino (reinicio del server), al volver a
+ * correrla no repite la busqueda en las plataformas si ya hay resultados, y los
+ * analisis ya hechos salen del cache.
+ */
 export async function runSearchJob(searchId: string): Promise<void> {
+  // "Reclamar" la busqueda: evita que dos workers la corran a la vez. Se puede
+  // reclamar si nadie la tiene o si quien la tenia dejo de dar señales de vida.
+  const claimed = await queryOne<{ attempts: number }>(
+    `update trend_searches set claimed_at = now(), updated_at = now(), attempts = attempts + 1
+     where id = $1 and status in ('queued', 'searching', 'analyzing')
+       and (claimed_at is null or updated_at < now() - make_interval(mins => $2))
+     returning attempts`,
+    [searchId, STALE_AFTER_MINUTES]
+  );
+  if (!claimed) return;
+
   const search = await queryOne<SearchRow>(
     "select id, profile_id, client_id, saved_search_id, kind, prompt, plan, status, cached_from from trend_searches where id = $1",
     [searchId]
   );
   if (!search) return;
-  if (search.status === "done") return;
   const notes: string[] = [];
 
+  if (claimed.attempts > MAX_ATTEMPTS) {
+    await query(
+      `update trend_searches set status = 'error', claimed_at = null, updated_at = now(), finished_at = now(),
+         error = 'La búsqueda se interrumpió varias veces. Volvé a intentarlo.' where id = $1`,
+      [searchId]
+    );
+    return;
+  }
+
   try {
-    if (search.kind === "search" && !search.cached_from) {
+    const existing = await queryOne<{ n: number }>(
+      "select count(*)::int as n from trend_search_results where search_id = $1",
+      [searchId]
+    );
+    if (search.kind === "search" && !search.cached_from && (existing?.n ?? 0) === 0) {
       if (!search.plan) throw new AiStepError("La búsqueda no tiene plan.");
       await searchProviders(search, search.plan, notes);
     }
@@ -101,7 +133,7 @@ export async function runSearchJob(searchId: string): Promise<void> {
       err instanceof ProviderError || err instanceof AiStepError ? err.message : aiErrorMessage(err);
     log.error("trend search failed", { searchId, err: String(err) });
     await query(
-      "update trend_searches set status = 'error', error = $2, provider_notes = $3, finished_at = now() where id = $1",
+      "update trend_searches set status = 'error', error = $2, provider_notes = $3, finished_at = now(), claimed_at = null, updated_at = now() where id = $1",
       [searchId, message, JSON.stringify(notes)]
     );
     await refreshCost(searchId);
@@ -263,12 +295,24 @@ async function refreshCost(searchId: string): Promise<void> {
 async function finish(searchId: string, notes: string[]): Promise<void> {
   await query(
     `update trend_searches
-       set status = 'done', progress = 100, progress_message = null, finished_at = now(),
+       set status = 'done', progress = 100, progress_message = null, finished_at = now(), claimed_at = null, updated_at = now(),
            provider_notes = (select coalesce(jsonb_agg(distinct n), '[]'::jsonb) from jsonb_array_elements_text(provider_notes || $2::jsonb) n)
      where id = $1`,
     [searchId, JSON.stringify(notes)]
   );
   await refreshCost(searchId);
+}
+
+/** Busquedas que quedaron "en curso" sin progreso (server reiniciado a mitad de camino). */
+export async function findStaleSearches(): Promise<string[]> {
+  const rows = await query<{ id: string }>(
+    `select id from trend_searches
+     where status in ('queued', 'searching', 'analyzing')
+       and updated_at < now() - make_interval(mins => $1)
+     order by created_at limit 20`,
+    [STALE_AFTER_MINUTES]
+  );
+  return rows.map((r) => r.id);
 }
 
 // ===== Busquedas guardadas con alerta =====

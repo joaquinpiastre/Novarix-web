@@ -17,7 +17,7 @@ import {
 } from "@/lib/trends/access";
 import { AiStepError, analyzeVideo, planSearch } from "@/lib/trends/ai";
 import { createManualSearch } from "@/lib/trends/manual";
-import { cacheKeyFor, tryReuseCache } from "@/lib/trends/pipeline";
+import { cacheKeyFor, STALE_AFTER_MINUTES, tryReuseCache } from "@/lib/trends/pipeline";
 import { checkAiLimit, checkSearchLimit } from "@/lib/trends/settings";
 import { getVideo } from "@/lib/trends/store";
 import {
@@ -118,7 +118,7 @@ export async function runSearch(searchId: string, plan: SearchPlan): Promise<Res
 
   await query(
     `update trend_searches set plan = $2, status = 'queued', progress = 0, progress_message = 'En cola…', error = null,
-       cache_key = $3 where id = $1`,
+       cache_key = $3, claimed_at = null, attempts = 0, updated_at = now() where id = $1`,
     [searchId, JSON.stringify(clean), cacheKeyFor(clean)]
   );
   await query("delete from trend_search_results where search_id = $1", [searchId]);
@@ -132,11 +132,25 @@ export async function runSearch(searchId: string, plan: SearchPlan): Promise<Res
   return {};
 }
 
-export async function getSearchStatus(searchId: string): Promise<{ status: SearchStatus; progress: number; message: string | null; error: string | null } | null> {
+export async function getSearchStatus(searchId: string): Promise<{ status: SearchStatus; progress: number; message: string | null; error: string | null; stale: boolean } | null> {
   const access = await requireTrendsAccess();
-  const search = await loadAccessibleSearch<{ profile_id: string; client_id: string | null; status: SearchStatus; progress: number; progress_message: string | null; error: string | null }>(access, searchId);
+  const search = await loadAccessibleSearch<{ profile_id: string; client_id: string | null; status: SearchStatus; progress: number; progress_message: string | null; error: string | null; updated_at: string }>(access, searchId);
   if (!search) return null;
-  return { status: search.status, progress: search.progress, message: search.progress_message, error: search.error };
+  const running = ["queued", "searching", "analyzing"].includes(search.status);
+  const stale = running && Date.now() - Date.parse(search.updated_at) > STALE_AFTER_MINUTES * 60_000;
+  return { status: search.status, progress: search.progress, message: search.progress_message, error: search.error, stale };
+}
+
+/** Reanuda a mano una busqueda que quedo trabada (ej. el server se reinicio mientras corria). */
+export async function resumeSearch(searchId: string): Promise<Result> {
+  const access = await requireTrendsAccess();
+  const search = await loadAccessibleSearch<{ id: string; profile_id: string; client_id: string | null; status: SearchStatus }>(access, searchId);
+  if (!search) return { error: "No existe esa búsqueda." };
+  if (!["queued", "searching", "analyzing"].includes(search.status)) return { error: "Esta búsqueda no está en curso." };
+  await query("update trend_searches set claimed_at = null, attempts = 0, progress_message = 'Reanudando…', updated_at = now() - interval '1 hour' where id = $1", [searchId]);
+  await enqueueTrendSearch(searchId);
+  await recordAudit({ actorId: access.userId, action: "trends.search.resume", entityType: "trend_search", entityId: searchId, ip: getClientIp() });
+  return {};
 }
 
 export async function deleteSearch(searchId: string): Promise<Result> {

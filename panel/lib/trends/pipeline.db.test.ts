@@ -96,6 +96,49 @@ describe.skipIf(!process.env.RUN_DB_TESTS)("Radar contra la base (integración)"
     expect(cards.length).toBe(36);
   });
 
+  it("reanuda una búsqueda cortada a mitad del análisis (ej. reinicio por deploy)", async () => {
+    const { findStaleSearches } = await import("./pipeline");
+    const ai = await import("./ai");
+    const id = (await queryOne<{ id: string }>(
+      "insert into trend_searches (profile_id, client_id, prompt, plan, status) values ($1,$2,'cortada',$3,'queued') returning id",
+      [profileId, clientId, JSON.stringify(plan)]
+    ))!.id;
+    // Copia resultados (como si ya hubiera buscado) y la deja "analizando" sin progreso hace 20 min.
+    await query(
+      `insert into trend_search_results (search_id, video_id, position, relevance, final_score, discarded)
+       select $1, video_id, position, relevance, final_score, discarded from trend_search_results where search_id = $2`,
+      [id, searchId]
+    );
+    await query(
+      "update trend_searches set status = 'analyzing', progress = 70, claimed_at = now() - interval '20 minutes', updated_at = now() - interval '20 minutes' where id = $1",
+      [id]
+    );
+    expect(await findStaleSearches()).toContain(id);
+
+    const relevanceCalls = vi.mocked(ai.scoreRelevance).mock.calls.length;
+    await runSearchJob(id);
+    const s = await queryOne<{ status: string; attempts: number; claimed_at: string | null }>(
+      "select status, attempts, claimed_at from trend_searches where id = $1",
+      [id]
+    );
+    expect(s?.status).toBe("done");
+    expect(s?.claimed_at).toBeNull();
+    // No volvió a buscar en las plataformas (ya tenía resultados).
+    expect(vi.mocked(ai.scoreRelevance).mock.calls.length).toBe(relevanceCalls);
+    expect(await findStaleSearches()).not.toContain(id);
+  });
+
+  it("no corre dos veces la misma búsqueda a la vez", async () => {
+    const id = (await queryOne<{ id: string }>(
+      "insert into trend_searches (profile_id, client_id, prompt, plan, status, claimed_at, updated_at) values ($1,$2,'ocupada',$3,'searching', now(), now()) returning id",
+      [profileId, clientId, JSON.stringify(plan)]
+    ))!.id;
+    await runSearchJob(id);
+    const s = await queryOne<{ status: string; attempts: number }>("select status, attempts from trend_searches where id = $1", [id]);
+    expect(s?.status).toBe("searching");
+    expect(s?.attempts).toBe(0);
+  });
+
   it("tableros", async () => {
     const board = (await queryOne<{ id: string }>("insert into swipe_boards (name, client_id, created_by) values ('b',$1,$2) returning id", [clientId, profileId]))!.id;
     const v = (await queryOne<{ video_id: string }>("select video_id from trend_search_results where search_id = $1 order by position limit 1", [searchId]))!;
