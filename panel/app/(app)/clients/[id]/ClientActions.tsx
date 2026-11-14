@@ -74,8 +74,8 @@ export function ClientActions({
               ideas y las cuentas de su portal. <strong>No se puede deshacer.</strong>
             </p>
             <p className="text-text-muted">
-              Si solo dejó de trabajar con ustedes, mejor usá <em>Marcar inactivo</em>: se conserva todo y se puede reactivar. Si tiene cobros registrados, no se
-              puede eliminar (para no perder el historial financiero).
+              Si tiene cobros o acuerdos, <strong>se conservan como historial</strong> en Finanzas (los acuerdos quedan inactivos); todo lo demás se borra y el
+              cliente deja de aparecer en el panel. Si solo dejó de trabajar con ustedes por un tiempo, usá <em>Marcar inactivo</em>: no se borra nada.
             </p>
             <Input label={`Para confirmar, escribí: ${name}`} value={confirmName} onChange={(e) => setConfirmName(e.target.value)} autoComplete="off" />
             {error && <p className="text-danger">{error}</p>}

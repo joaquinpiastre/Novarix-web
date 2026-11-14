@@ -19,6 +19,7 @@ const STATUS_TONE: Record<ClientStatus, "success" | "warning" | "neutral" | "dan
   pausado: "warning",
   baja: "danger",
   inactivo: "neutral",
+  eliminado: "danger",
 };
 
 function SubmitButton() {
@@ -59,7 +60,7 @@ function NewClientForm({ onDone }: { onDone: () => void }) {
         <Input label="Rubro" name="industry" />
         <Input label="Ciudad" name="city" />
         <Select label="Estado" name="status" defaultValue="activo">
-          {Object.entries(CLIENT_STATUS_LABELS).map(([value, label]) => (
+          {Object.entries(CLIENT_STATUS_LABELS).filter(([value]) => value !== "eliminado").map(([value, label]) => (
             <option key={value} value={value}>
               {label}
             </option>

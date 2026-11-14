@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requireClientAccess } from "@/lib/auth/requireClientAccess";
 import { can } from "@/lib/auth/permissions";
 import { query, queryOne } from "@/lib/db";
@@ -90,6 +90,7 @@ export default async function ClientDetailPage({
   const canSeeSystems = can(access.profile, "systems.manage");
 
   const client = await queryOne<Client>("select * from clients where id = $1", [params.id]);
+  if (client?.status === "eliminado") redirect("/clients");
   if (!client) notFound();
 
   const [

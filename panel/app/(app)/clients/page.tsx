@@ -22,6 +22,7 @@ export default async function ClientsPage() {
         `select c.*,
                 (select count(*) from client_services cs where cs.client_id = c.id and cs.status = 'active') as active_services_count
          from clients c
+         where c.status <> 'eliminado'
          order by c.name`
       )
     : await query<ClientRow>(
@@ -29,7 +30,7 @@ export default async function ClientsPage() {
                 (select count(*) from client_services cs where cs.client_id = c.id and cs.status = 'active') as active_services_count
          from clients c
          join client_team ct on ct.client_id = c.id
-         where ct.profile_id = $1
+         where ct.profile_id = $1 and c.status <> 'eliminado'
          order by c.name`,
         [userId]
       );

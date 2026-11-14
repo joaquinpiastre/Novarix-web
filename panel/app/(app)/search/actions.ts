@@ -22,7 +22,7 @@ export async function globalSearch(term: string): Promise<SearchResult[]> {
 
   if (scopeClientsFor(profile).all) {
     const clients = await query<{ id: string; name: string }>(
-      "select id, name from clients where name ilike $1 order by name limit 5",
+      "select id, name from clients where name ilike $1 and status <> 'eliminado' order by name limit 5",
       [like]
     );
     results.push(...clients.map((c) => ({ id: c.id, type: "client" as const, label: c.name })));

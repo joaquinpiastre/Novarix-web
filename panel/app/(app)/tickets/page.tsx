@@ -87,7 +87,7 @@ export default async function TicketsInboxPage({
   );
 
   const clients = await query<{ id: string; name: string }>(
-    "select id, name from clients order by name"
+    "select id, name from clients where status <> 'eliminado' order by name"
   );
 
   return (

@@ -15,7 +15,7 @@ export default async function PaymentsInPage() {
   await requirePermission("payments_in.manage");
 
   const [clients, agreements, paidThisMonth, pendingOneOff, history] = await Promise.all([
-    query<ClientRow>("select id, name from clients order by name"),
+    query<ClientRow>("select id, name from clients where status <> 'eliminado' order by name"),
     query<AgreementRow>(
       `select ra.id, ra.client_id, ra.amount, ra.billing_day, ra.concept,
               json_build_object('name', c.name) as client

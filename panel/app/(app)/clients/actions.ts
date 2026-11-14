@@ -184,10 +184,11 @@ export async function setClientStatus(clientId: string, status: ClientStatus): P
 }
 
 /**
- * Elimina un cliente y TODO lo suyo (contenido, tickets, metricas, archivos,
- * busquedas, usuarios del portal). Irreversible: solo admin y escribiendo el
- * nombre exacto. Si tiene cobros o acuerdos registrados, no se permite (para
- * no perder el historial financiero): en ese caso, marcarlo inactivo.
+ * Elimina un cliente y todo lo suyo (contenido, tickets, metricas, archivos,
+ * accesos, busquedas, usuarios del portal). Irreversible: solo admin y
+ * escribiendo el nombre exacto. Si tiene cobros o acuerdos, se conservan como
+ * historial: queda solo la fila del cliente (estado 'eliminado', oculta en
+ * todo el panel) con sus cobros y acuerdos (desactivados).
  */
 export async function deleteClient(clientId: string, confirmName: string): Promise<{ error?: string }> {
   const { userId: actorId } = await requirePermission("clients.delete");
@@ -200,11 +201,7 @@ export async function deleteClient(clientId: string, confirmName: string): Promi
             (select count(*)::int from recurring_agreements where client_id = $1) as agreements`,
     [clientId]
   );
-  if ((money?.payments ?? 0) > 0 || (money?.agreements ?? 0) > 0) {
-    return {
-      error: `No se puede eliminar: tiene ${money?.payments ?? 0} cobro(s) y ${money?.agreements ?? 0} acuerdo(s) registrados. Para no perder el historial financiero, marcalo como Inactivo.`,
-    };
-  }
+  const keepHistory = (money?.payments ?? 0) > 0 || (money?.agreements ?? 0) > 0;
 
   // Archivos en el bucket (se borran despues de la base, best-effort).
   const keys = (
@@ -225,7 +222,31 @@ export async function deleteClient(clientId: string, confirmName: string): Promi
     )
   ).map((r) => r.profile_id);
 
-  await query("delete from clients where id = $1", [clientId]);
+  if (keepHistory) {
+    // Se borra todo lo del cliente salvo sus cobros y acuerdos: se recorren las
+    // tablas que dependen de clients con borrado en cascada (asi tambien entran
+    // las que se agreguen en el futuro) y queda solo la fila del cliente.
+    const deps = await query<{ tbl: string; col: string }>(
+      `select c.conrelid::regclass::text as tbl, a.attname as col
+       from pg_constraint c
+       join pg_attribute a on a.attrelid = c.conrelid and a.attnum = any(c.conkey)
+       where c.contype = 'f' and c.confrelid = 'public.clients'::regclass and c.confdeltype = 'c'`
+    );
+    for (const d of deps) {
+      if (!/^[a-z_.]+$/.test(d.tbl) || !/^[a-z_]+$/.test(d.col)) continue;
+      await query(`delete from ${d.tbl} where ${d.col} = $1`, [clientId]);
+    }
+    await query("update recurring_agreements set active = false where client_id = $1", [clientId]);
+    await query(
+      `update clients set status = 'eliminado', deleted_at = now(), notes = null, legal_name = null, tax_id = null,
+         website = null, social_links = null, primary_contact_name = null, primary_contact_phone = null,
+         primary_contact_email = null, logo_url = null
+       where id = $1`,
+      [clientId]
+    );
+  } else {
+    await query("delete from clients where id = $1", [clientId]);
+  }
   if (portalProfiles.length) {
     await query(
       `delete from profiles where id = any($1::uuid[]) and role = 'client'
@@ -242,7 +263,7 @@ export async function deleteClient(clientId: string, confirmName: string): Promi
     action: "clients.delete",
     entityType: "client",
     entityId: clientId,
-    before: { name: client.name, status: client.status, files: keys.length, portal_users: portalProfiles.length },
+    before: { name: client.name, status: client.status, files: keys.length, portal_users: portalProfiles.length, kept_financial_history: keepHistory },
     ip: getClientIp(),
   });
   revalidatePath("/clients");

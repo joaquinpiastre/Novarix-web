@@ -82,6 +82,7 @@ const STATUS_TONE = {
   pausado: "warning",
   baja: "danger",
   inactivo: "neutral",
+  eliminado: "danger",
 } as const;
 
 function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: string }) {
@@ -109,7 +110,7 @@ function ResumenTab({ client, canEdit, initialEditing = false }: { client: Clien
           <Input label="Rubro" name="industry" defaultValue={client.industry ?? ""} />
           <Input label="Ciudad" name="city" defaultValue={client.city ?? ""} />
           <Select label="Estado" name="status" defaultValue={client.status}>
-            {Object.entries(CLIENT_STATUS_LABELS).map(([value, label]) => (
+            {Object.entries(CLIENT_STATUS_LABELS).filter(([value]) => value !== "eliminado").map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
               </option>

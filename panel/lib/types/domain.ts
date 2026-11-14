@@ -1,7 +1,7 @@
 export type UserRole = "admin" | "programmer" | "marketing" | "marketing_admin" | "client";
 export type TaskStatus = "pending" | "in_progress" | "done";
 export type PaymentOutType = "salary" | "bonus" | "other";
-export type ClientStatus = "prospecto" | "activo" | "pausado" | "baja" | "inactivo";
+export type ClientStatus = "prospecto" | "activo" | "pausado" | "baja" | "inactivo" | "eliminado";
 
 export interface Profile {
   id: string;
@@ -610,6 +610,7 @@ export const CLIENT_STATUS_LABELS: Record<ClientStatus, string> = {
   pausado: "Pausado",
   baja: "Baja",
   inactivo: "Inactivo",
+  eliminado: "Eliminado",
 };
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
