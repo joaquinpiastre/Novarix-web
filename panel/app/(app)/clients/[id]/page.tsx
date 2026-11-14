@@ -267,8 +267,15 @@ export default async function ClientDetailPage({
   );
   const opportunities = Array.from(new Set(missingServices));
 
+  const allPlans = await query<{ id: string; status: MarketingPlan["status"]; period_start: string; period_end: string; created_at: string }>(
+    `select id, status, period_start, period_end, created_at from marketing_plans where client_id = $1
+     order by (status = 'active') desc, created_at desc`,
+    [params.id]
+  );
+
   return (
     <ClientDetailTabs
+      allPlans={allPlans}
       access={access}
       canSeeSystems={canSeeSystems}
       projects={projects}

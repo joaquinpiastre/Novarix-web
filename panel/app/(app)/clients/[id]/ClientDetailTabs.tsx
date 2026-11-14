@@ -3,6 +3,7 @@
 import { CredentialsBox } from "@/components/invites/CredentialsBox";
 import { ClientActions } from "./ClientActions";
 import { CredentialsTab } from "./CredentialsTab";
+import type { PlanSummary } from "./MarketingTab";
 import type { CredentialRow } from "@/lib/credentials/platforms";
 import { useState, useTransition } from "react";
 import Link from "next/link";
@@ -727,8 +728,10 @@ export function ClientDetailTabs({
   initialEditing = false,
   canDelete = false,
   credentials = null,
+  allPlans = [],
   metaOAuthEnabled,
 }: {
+  allPlans?: PlanSummary[];
   credentials?: CredentialRow[] | null;
   initialTab?: string;
   initialEditing?: boolean;
@@ -826,6 +829,7 @@ export function ClientDetailTabs({
       <MarketingTab
         clientId={client.id}
         plan={currentPlan}
+        allPlans={allPlans}
         deliverables={deliverables}
         checklistCompleted={checklistCompleted}
         opportunities={opportunities}

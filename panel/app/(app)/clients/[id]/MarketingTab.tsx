@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { useFormState, useFormStatus } from "react-dom";
 import Link from "next/link";
 import { CalendarDays, Plus } from "lucide-react";
@@ -35,6 +36,8 @@ import {
   updateContentStatus,
   updateMarketingPlanStatus,
   type ActionState,
+  activateMarketingPlan,
+  deleteMarketingPlan,
 } from "./marketingActions";
 import type { ContentCommentRow, DeliverableProgress } from "./page";
 import type { BrandKit } from "@/lib/types/domain";
@@ -48,24 +51,108 @@ function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: st
   );
 }
 
+export interface PlanSummary {
+  id: string;
+  status: MarketingPlan["status"];
+  period_start: string;
+  period_end: string;
+  created_at: string;
+}
+
+const PLAN_TONE: Record<MarketingPlan["status"], "success" | "neutral" | "accent" | "warning"> = {
+  active: "success",
+  approved: "accent",
+  draft: "neutral",
+  closed: "warning",
+};
+
+/** Todos los planes del cliente: aprobar, activar o eliminar (ej. borradores duplicados). */
+function PlansList({ clientId, plans, currentId, canApprove }: { clientId: string; plans: PlanSummary[]; currentId: string | null; canApprove: boolean }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  if (plans.length <= 1) return null;
+  const run = (fn: () => Promise<{ error?: string }>) =>
+    start(async () => {
+      setError(null);
+      const res = await fn();
+      if (res.error) setError(res.error);
+      router.refresh();
+    });
+  return (
+    <div className="mt-5 border-t border-border pt-4">
+      <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">Todos los planes ({plans.length})</p>
+      <ul className="mt-2 divide-y divide-border">
+        {plans.map((p) => (
+          <li key={p.id} className="flex flex-col gap-2 py-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 text-sm">
+              <Badge tone={PLAN_TONE[p.status]}>{MARKETING_PLAN_STATUS_LABELS[p.status]}</Badge>
+              <span className="text-text-primary">
+                {formatDate(p.period_start)} – {formatDate(p.period_end)}
+              </span>
+              {p.id === currentId && <span className="text-xs text-text-muted">(el que se muestra arriba)</span>}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {canApprove && p.status !== "active" && (
+                <Button variant="secondary" disabled={pending} onClick={() => run(() => activateMarketingPlan(p.id, clientId))}>
+                  Activar
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                disabled={pending}
+                onClick={() => {
+                  if (!confirm(`¿Eliminar el plan ${formatDate(p.period_start)} – ${formatDate(p.period_end)}? Las piezas de contenido no se borran.`)) return;
+                  run(() => deleteMarketingPlan(p.id, clientId));
+                }}
+              >
+                Eliminar
+              </Button>
+            </div>
+          </li>
+        ))}
+      </ul>
+      {error && <p className="mt-2 text-sm text-danger">{error}</p>}
+      <p className="mt-2 text-xs text-text-muted">Activar un plan cierra el que estaba en ejecución: hay un solo plan vigente por cliente.</p>
+    </div>
+  );
+}
+
 function PlanCard({
   clientId,
   plan,
   deliverables,
   canApprove,
+  allPlans,
 }: {
   clientId: string;
   plan: MarketingPlan | null;
   deliverables: DeliverableProgress[];
   canApprove: boolean;
+  allPlans: PlanSummary[];
 }) {
   const [showForm, setShowForm] = useState(!plan);
   const [state, formAction] = useFormState<ActionState, FormData>(createMarketingPlan, {});
   const [rows, setRows] = useState(1);
+  const [justCreated, setJustCreated] = useState(false);
+
+  // Al crear: se cierra el formulario y se avisa (antes quedaba abierto y parecia que no habia pasado nada).
+  useEffect(() => {
+    if (state.createdId) {
+      setShowForm(false);
+      setJustCreated(true);
+      setRows(1);
+    }
+  }, [state.createdId]);
 
   if (plan && !showForm) {
     return (
       <Card>
+        {justCreated && (
+          <p className="mb-3 rounded-xl bg-success/10 px-3 py-2 text-sm text-success">
+            Plan creado como borrador. Lo ves en “Todos los planes”: tocá “Activar” para que pase a ser el vigente.
+          </p>
+        )}
         <div className="flex items-center justify-between">
           <CardTitle>Plan de marketing vigente</CardTitle>
           <div className="flex items-center gap-2">
@@ -109,6 +196,7 @@ function PlanCard({
             </ul>
           </div>
         )}
+        <PlansList clientId={clientId} plans={allPlans} currentId={plan.id} canApprove={canApprove} />
         {canApprove && plan.status === "draft" && (
           <form action={updateMarketingPlanStatus} className="mt-4">
             <input type="hidden" name="id" value={plan.id} />
@@ -469,6 +557,7 @@ function BrandKitCard({ clientId, brandKit }: { clientId: string; brandKit: Bran
 export function MarketingTab({
   clientId,
   plan,
+  allPlans = [],
   deliverables,
   checklistCompleted,
   opportunities,
@@ -483,6 +572,7 @@ export function MarketingTab({
 }: {
   clientId: string;
   plan: MarketingPlan | null;
+  allPlans?: PlanSummary[];
   deliverables: DeliverableProgress[];
   checklistCompleted: Set<string>;
   opportunities: string[];
@@ -498,7 +588,7 @@ export function MarketingTab({
   return (
     <div className="flex flex-col gap-5">
       <div className="grid gap-5 lg:grid-cols-2">
-        <PlanCard clientId={clientId} plan={plan} deliverables={deliverables} canApprove={canApprovePlan} />
+        <PlanCard clientId={clientId} plan={plan} deliverables={deliverables} canApprove={canApprovePlan} allPlans={allPlans} />
         <ChecklistCard clientId={clientId} completed={checklistCompleted} opportunities={opportunities} />
       </div>
       <ContentCalendar

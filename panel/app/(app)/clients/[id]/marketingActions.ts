@@ -16,6 +16,8 @@ import type {
 
 export interface ActionState {
   error?: string;
+  /** createMarketingPlan: id del plan creado (la pantalla cierra el formulario y avisa). */
+  createdId?: string;
 }
 
 // ===== Plan de marketing =====
@@ -30,12 +32,14 @@ export async function createMarketingPlan(
   const period_start = String(formData.get("period_start") ?? "");
   const period_end = String(formData.get("period_end") ?? "");
   if (!period_start || !period_end) return { error: "Completá el período del plan." };
+  if (period_end < period_start) return { error: "La fecha \"Hasta\" tiene que ser posterior a \"Desde\"." };
 
   const objectives = String(formData.get("objectives") ?? "").trim() || null;
   const target_audience = String(formData.get("target_audience") ?? "").trim() || null;
   const value_proposition = String(formData.get("value_proposition") ?? "").trim() || null;
   const budgetRaw = String(formData.get("budget_ads") ?? "").trim();
-  const budget_ads = budgetRaw ? Number(budgetRaw) : null;
+  const budget_ads = budgetRaw ? Number(budgetRaw.replace(",", ".")) : null;
+  if (budget_ads != null && (!Number.isFinite(budget_ads) || budget_ads < 0)) return { error: "El presupuesto tiene que ser un número." };
   const channels = String(formData.get("channels") ?? "")
     .split(",")
     .map((c) => c.trim())
@@ -79,6 +83,37 @@ export async function createMarketingPlan(
   });
 
   revalidatePath(`/clients/${client_id}`);
+  return { createdId: row.id };
+}
+
+/** Activa un plan: pasa a "En ejecución" y el que estaba activo se cierra (hay un solo plan vigente). */
+export async function activateMarketingPlan(id: string, clientId: string): Promise<{ error?: string }> {
+  const { userId: actorId } = await requireClientAccess(clientId);
+  const plan = await queryOne<{ client_id: string }>("select client_id from marketing_plans where id = $1", [id]);
+  if (!plan || plan.client_id !== clientId) return { error: "No existe ese plan." };
+  await query("update marketing_plans set status = 'closed', updated_at = now() where client_id = $1 and status = 'active' and id <> $2", [clientId, id]);
+  await query(
+    `update marketing_plans set status = 'active', updated_at = now(),
+       approved_by = coalesce(approved_by, $2), approved_at = coalesce(approved_at, now())
+     where id = $1`,
+    [id, actorId]
+  );
+  await recordAudit({ actorId, action: "marketing_plans.activate", entityType: "marketing_plan", entityId: id, after: { client_id: clientId }, ip: getClientIp() });
+  revalidatePath(`/clients/${clientId}`);
+  return {};
+}
+
+/** Elimina un plan (ej. borradores duplicados). Las piezas de contenido quedan, sin plan asociado. */
+export async function deleteMarketingPlan(id: string, clientId: string): Promise<{ error?: string }> {
+  const { userId: actorId } = await requireClientAccess(clientId);
+  const plan = await queryOne<{ client_id: string; status: string; period_start: string; period_end: string }>(
+    "select client_id, status::text as status, period_start, period_end from marketing_plans where id = $1",
+    [id]
+  );
+  if (!plan || plan.client_id !== clientId) return { error: "No existe ese plan." };
+  await query("delete from marketing_plans where id = $1", [id]);
+  await recordAudit({ actorId, action: "marketing_plans.delete", entityType: "marketing_plan", entityId: id, before: plan, ip: getClientIp() });
+  revalidatePath(`/clients/${clientId}`);
   return {};
 }
 
