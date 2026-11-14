@@ -26,6 +26,7 @@ import type {
 } from "@/lib/types/domain";
 import { ClientDetailTabs } from "./ClientDetailTabs";
 import { isMetaOAuthConfigured } from "@/lib/meta/oauth";
+import { listClientCredentials } from "@/lib/credentials/store";
 
 export const dynamic = "force-dynamic";
 
@@ -303,6 +304,7 @@ export default async function ClientDetailPage({
       initialTab={searchParams.tab}
       initialEditing={searchParams.editar === "1"}
       canDelete={can(access.profile, "clients.delete")}
+      credentials={can(access.profile, "credentials.view") ? await listClientCredentials(params.id) : null}
       metaOAuthEnabled={isMetaOAuthConfigured()}
     />
   );

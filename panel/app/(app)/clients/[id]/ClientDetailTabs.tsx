@@ -2,6 +2,8 @@
 
 import { CredentialsBox } from "@/components/invites/CredentialsBox";
 import { ClientActions } from "./ClientActions";
+import { CredentialsTab } from "./CredentialsTab";
+import type { CredentialRow } from "@/lib/credentials/platforms";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useFormState, useFormStatus } from "react-dom";
@@ -724,8 +726,10 @@ export function ClientDetailTabs({
   initialTab,
   initialEditing = false,
   canDelete = false,
+  credentials = null,
   metaOAuthEnabled,
 }: {
+  credentials?: CredentialRow[] | null;
   initialTab?: string;
   initialEditing?: boolean;
   canDelete?: boolean;
@@ -874,6 +878,14 @@ export function ClientDetailTabs({
           assignable={allProfiles}
         />
       ),
+    });
+  }
+
+  if (credentials) {
+    tabs.push({
+      id: "accesos",
+      label: `Accesos (${credentials.length})`,
+      content: <CredentialsTab clientId={client.id} credentials={credentials} />,
     });
   }
 
