@@ -127,6 +127,10 @@ export interface MarketingPlan {
   approved_at: string | null;
   created_at: string;
   updated_at: string;
+  /** Plan completo armado por Claude (lib/marketing/aiPlanSchema.ts), si se genero con IA. */
+  ai_plan?: unknown;
+  generated_by_ai?: boolean;
+  calendar_created_at?: string | null;
 }
 
 export interface Campaign {

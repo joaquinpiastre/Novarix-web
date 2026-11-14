@@ -145,8 +145,9 @@ export default async function ClientDetailPage({
         )
       : Promise.resolve([]),
     queryOne<MarketingPlan>(
+      // El plan mas reciente que no este cerrado (asi un plan recien generado se ve enseguida para revisarlo y activarlo).
       `select * from marketing_plans where client_id = $1
-       order by status = 'active' desc, period_start desc limit 1`,
+       order by (status <> 'closed') desc, created_at desc limit 1`,
       [params.id]
     ),
     query<ClientChecklistRow>("select * from client_checklist where client_id = $1", [params.id]),

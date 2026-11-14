@@ -25,6 +25,8 @@ import {
   type Profile,
 } from "@/lib/types/domain";
 import { CHECKLIST_ITEMS } from "@/lib/marketing/checklist";
+import type { AiMarketingPlan } from "@/lib/marketing/aiPlanSchema";
+import { AiPlanForm, AiPlanView } from "./AiPlan";
 import { CONTENT_ASSIGNABLE_ROLES, formatLabel, networkLabel } from "@/lib/marketing/content";
 import { ContentItemDialog } from "@/components/content/ContentItemDialog";
 import {
@@ -135,6 +137,7 @@ function PlanCard({
   const [state, formAction] = useFormState<ActionState, FormData>(createMarketingPlan, {});
   const [rows, setRows] = useState(1);
   const [justCreated, setJustCreated] = useState(false);
+  const [mode, setMode] = useState<"ai" | "manual">("ai");
 
   // Al crear: se cierra el formulario y se avisa (antes quedaba abierto y parecia que no habia pasado nada).
   useEffect(() => {
@@ -150,7 +153,7 @@ function PlanCard({
       <Card>
         {justCreated && (
           <p className="mb-3 rounded-xl bg-success/10 px-3 py-2 text-sm text-success">
-            Plan creado como borrador. Lo ves en “Todos los planes”: tocá “Activar” para que pase a ser el vigente.
+            Plan creado como borrador. Revisalo y tocá “Activar” para que pase a ser el vigente.
           </p>
         )}
         <div className="flex items-center justify-between">
@@ -167,7 +170,18 @@ function PlanCard({
         <p className="mt-2 text-xs text-text-muted">
           {formatDate(plan.period_start)} – {formatDate(plan.period_end)}
         </p>
-        {plan.objectives && <p className="mt-3 text-sm text-text-primary">{plan.objectives}</p>}
+        {plan.ai_plan ? (
+          <AiPlanView
+            plan={plan.ai_plan as AiMarketingPlan}
+            planId={plan.id}
+            clientId={clientId}
+            status={plan.status}
+            calendarCreated={Boolean(plan.calendar_created_at)}
+            canActivate={canApprove}
+          />
+        ) : (
+          plan.objectives && <p className="mt-3 whitespace-pre-line text-sm text-text-primary">{plan.objectives}</p>
+        )}
         {plan.budget_ads != null && (
           <p className="mt-2 text-sm text-text-muted">
             Presupuesto de pauta: <span className="text-text-primary">{formatCurrency(plan.budget_ads)}</span>
@@ -214,51 +228,84 @@ function PlanCard({
   return (
     <Card>
       <CardTitle>{plan ? "Nuevo plan de marketing" : "Crear plan de marketing"}</CardTitle>
-      <form action={formAction} className="mt-4 grid gap-4 sm:grid-cols-2">
-        <input type="hidden" name="client_id" value={clientId} />
-        <Input label="Desde" name="period_start" type="date" required />
-        <Input label="Hasta" name="period_end" type="date" required />
-        <Input label="Presupuesto de pauta (opcional)" name="budget_ads" type="number" min={0} step="0.01" />
-        <Input label="Canales (separados por coma)" name="channels" placeholder="Instagram, Google Ads" />
-        <div className="sm:col-span-2">
-          <Textarea label="Objetivos" name="objectives" rows={2} />
-        </div>
-        <div className="sm:col-span-2">
-          <Textarea label="Público objetivo" name="target_audience" rows={2} />
-        </div>
-        <div className="sm:col-span-2">
-          <Textarea label="Propuesta de valor" name="value_proposition" rows={2} />
-        </div>
-        <div className="sm:col-span-2">
-          <p className="text-sm font-medium text-text-primary">Entregables comprometidos</p>
-          <div className="mt-2 flex flex-col gap-2">
-            {Array.from({ length: rows }).map((_, i) => (
-              <div key={i} className="flex gap-2">
-                <Input name="deliverable_format" placeholder="Formato (ej: post)" className="flex-1" />
-                <Input
-                  name="deliverable_committed"
-                  type="number"
-                  min={0}
-                  placeholder="Cantidad"
-                  className="w-32"
-                />
-              </div>
-            ))}
-          </div>
-          <Button type="button" variant="ghost" className="mt-2" onClick={() => setRows((r) => r + 1)}>
-            <Plus size={14} /> Agregar entregable
-          </Button>
-        </div>
-        {state.error && <p className="text-sm text-danger sm:col-span-2">{state.error}</p>}
-        <div className="flex gap-2 sm:col-span-2">
-          <SubmitButton label="Crear plan" pendingLabel="Creando…" />
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setMode("ai")}
+          className={`rounded-full px-3 py-1.5 text-xs font-medium ${mode === "ai" ? "bg-accent text-accent-fg" : "bg-surface-hover text-text-muted hover:text-text-primary"}`}
+        >
+          ✨ Armarlo con IA (recomendado)
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("manual")}
+          className={`rounded-full px-3 py-1.5 text-xs font-medium ${mode === "manual" ? "bg-accent text-accent-fg" : "bg-surface-hover text-text-muted hover:text-text-primary"}`}
+        >
+          Cargarlo a mano
+        </button>
+      </div>
+      {mode === "ai" ? (
+        <>
+          <AiPlanForm
+            clientId={clientId}
+            onDone={() => {
+              setShowForm(false);
+              setJustCreated(true);
+            }}
+          />
           {plan && (
-            <Button type="button" variant="ghost" onClick={() => setShowForm(false)}>
+            <Button type="button" variant="ghost" className="mt-2" onClick={() => setShowForm(false)}>
               Cancelar
             </Button>
           )}
-        </div>
-      </form>
+        </>
+      ) : (
+      <form action={formAction} className="mt-4 grid gap-4 sm:grid-cols-2">
+          <input type="hidden" name="client_id" value={clientId} />
+          <Input label="Desde" name="period_start" type="date" required />
+          <Input label="Hasta" name="period_end" type="date" required />
+          <Input label="Presupuesto de pauta (opcional)" name="budget_ads" type="number" min={0} step="0.01" />
+          <Input label="Canales (separados por coma)" name="channels" placeholder="Instagram, Google Ads" />
+          <div className="sm:col-span-2">
+            <Textarea label="Objetivos" name="objectives" rows={2} />
+          </div>
+          <div className="sm:col-span-2">
+            <Textarea label="Público objetivo" name="target_audience" rows={2} />
+          </div>
+          <div className="sm:col-span-2">
+            <Textarea label="Propuesta de valor" name="value_proposition" rows={2} />
+          </div>
+          <div className="sm:col-span-2">
+            <p className="text-sm font-medium text-text-primary">Entregables comprometidos</p>
+            <div className="mt-2 flex flex-col gap-2">
+              {Array.from({ length: rows }).map((_, i) => (
+                <div key={i} className="flex gap-2">
+                  <Input name="deliverable_format" placeholder="Formato (ej: post)" className="flex-1" />
+                  <Input
+                    name="deliverable_committed"
+                    type="number"
+                    min={0}
+                    placeholder="Cantidad"
+                    className="w-32"
+                  />
+                </div>
+              ))}
+            </div>
+            <Button type="button" variant="ghost" className="mt-2" onClick={() => setRows((r) => r + 1)}>
+              <Plus size={14} /> Agregar entregable
+            </Button>
+          </div>
+          {state.error && <p className="text-sm text-danger sm:col-span-2">{state.error}</p>}
+          <div className="flex gap-2 sm:col-span-2">
+            <SubmitButton label="Crear plan" pendingLabel="Creando…" />
+            {plan && (
+              <Button type="button" variant="ghost" onClick={() => setShowForm(false)}>
+                Cancelar
+              </Button>
+            )}
+          </div>
+        </form>
+      )}
     </Card>
   );
 }
