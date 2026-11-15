@@ -72,35 +72,38 @@ function ConnectStatusBanner() {
 
 function ConnectForm({ clientId, oauthEnabled }: { clientId: string; oauthEnabled: boolean }) {
   const [state, formAction] = useFormState<ActionState, FormData>(connectMeta, {});
-  const [showManual, setShowManual] = useState(!oauthEnabled);
+  const [showManual, setShowManual] = useState(false);
 
   return (
-    <Card>
-      <CardTitle>Conectar Meta</CardTitle>
-      {oauthEnabled ? (
-        <div className="mt-3 flex flex-col gap-3">
-          <p className="text-sm text-text-muted">
-            Iniciá sesión con la cuenta de Facebook que administra la página, el Instagram y la cuenta publicitaria del cliente, y elegí qué compartir.
-            Todo lo que se comparta se agrega solo y se sincroniza. El cliente también puede hacerlo desde su portal (Métricas).
-          </p>
-          <FacebookButton clientId={clientId} label="Conectar con Facebook" />
-          <button type="button" onClick={() => setShowManual((v) => !v)} className="self-start text-xs text-text-muted underline">
-            {showManual ? "Ocultar" : "O pegar un token manualmente"}
-          </button>
-        </div>
-      ) : (
-        <p className="mt-2 text-sm text-text-muted">
-          Pegá un access token de larga duración de un System User del Business Manager de Novarix
-          (Configuración del negocio → Usuarios del sistema → Generar token, con acceso a los activos
-          de este cliente). El botón &quot;Conectar con Facebook&quot; se habilita cuando se cargan META_APP_ID y META_APP_SECRET.
+    <Card className="flex flex-col items-center gap-4 py-8 text-center">
+      <div>
+        <CardTitle>Conectá Facebook e Instagram</CardTitle>
+        <p className="mx-auto mt-2 max-w-lg text-sm text-text-muted">
+          Un clic: iniciás sesión en Facebook, elegís la página, el Instagram y la cuenta publicitaria del cliente, y listo. Las métricas se cargan solas.
         </p>
+      </div>
+      {oauthEnabled ? (
+        <FacebookButton clientId={clientId} label="Conectar con Facebook" />
+      ) : (
+        <div className="flex flex-col items-center gap-2">
+          <span className="inline-flex min-h-11 cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-[#1877F2]/40 px-5 py-2 text-sm font-semibold text-white">
+            Conectar con Facebook
+          </span>
+          <p className="max-w-md text-xs text-warning">
+            Falta activarlo (una sola vez): cargar la clave secreta de la app de Meta en el panel. Pedíselo a quien administra el panel.
+          </p>
+        </div>
       )}
+      <p className="max-w-lg text-xs text-text-muted">El cliente también lo puede conectar solo desde su portal (Métricas).</p>
+      <button type="button" onClick={() => setShowManual((v) => !v)} className="text-xs text-text-muted underline">
+        {showManual ? "Ocultar opción avanzada" : "Opción avanzada: pegar un token"}
+      </button>
       {showManual && (
-        <form action={formAction} className="mt-4 flex flex-col gap-3">
+        <form action={formAction} className="flex w-full max-w-lg flex-col gap-3 text-left">
           <input type="hidden" name="client_id" value={clientId} />
           <Textarea name="access_token" rows={2} placeholder="EAAG..." required />
           {state.error && <p className="text-sm text-danger">{state.error}</p>}
-          <SubmitButton label="Conectar" pendingLabel="Validando…" />
+          <SubmitButton label="Conectar con token" pendingLabel="Validando…" />
         </form>
       )}
     </Card>
