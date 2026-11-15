@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAiPlan, normalizeFormat, normalizeNetwork, type PlanData } from "./aiPlanSchema";
+import { buildAiPlan, expectedPieces, normalizeFormat, normalizeNetwork, type PlanData } from "./aiPlanSchema";
 
 const data: PlanData = {
   executive_summary: "x",
@@ -33,5 +33,16 @@ describe("plan de marketing IA: normalización", () => {
     expect(plan.deliverables).toEqual(expect.arrayContaining([{ format: "carrusel", committed: 1 }, { format: "reel", committed: 1 }]));
     expect(plan.monthly_budget_ars).toBe(300000);
     expect(plan.version).toBe(2);
+  });
+});
+
+
+describe("frecuencia elegida", () => {
+  it("cuenta las piezas según los días y piezas por día", () => {
+    // diciembre 2026: 31 días; lun/mié/vie = 4+5+4 = 13 días
+    expect(expectedPieces({ days: [0, 1, 2, 3, 4, 5, 6], perDay: 1 }, "2026-12-01", "2026-12-31")).toBe(31);
+    expect(expectedPieces({ days: [1, 3, 5], perDay: 2 }, "2026-12-01", "2026-12-31")).toBe(26);
+    expect(expectedPieces({ days: [], perDay: 1 }, "2026-12-01", "2026-12-31")).toBeNull();
+    expect(expectedPieces(null, "2026-12-01", "2026-12-31")).toBeNull();
   });
 });

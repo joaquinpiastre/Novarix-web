@@ -15,7 +15,7 @@ describe.skipIf(!process.env.RUN_AI_TESTS)("plan de marketing con IA (API real)"
       periodEnd: "2026-12-31",
       budgetArs: 300000,
       instructions: "",
-      frequency: "daily",
+      frequency: { days: [1, 3, 5], perDay: 2 },
     });
     const secs = Math.round((Date.now() - t0) / 1000);
     const cost = usages.reduce((a, u) => a + estimateAiCost(AI_MODEL, u), 0);
@@ -25,7 +25,10 @@ describe.skipIf(!process.env.RUN_AI_TESTS)("plan de marketing con IA (API real)"
     console.log(`ej: ${plan.content_calendar[0]?.date} ${plan.content_calendar[0]?.title} — ${plan.content_calendar[0]?.hook}`);
     console.log(plan.document_markdown.slice(0, 600));
     expect(plan.objectives.length).toBeGreaterThanOrEqual(3);
-    expect(plan.content_calendar.length).toBeGreaterThanOrEqual(28);
+    const onDays = plan.content_calendar.filter((c) => [1, 3, 5].includes(new Date(`${c.date}T12:00:00Z`).getUTCDay())).length;
+    console.log(`en lun/mie/vie: ${onDays} de ${plan.content_calendar.length} (esperadas 26)`);
+    expect(plan.content_calendar.length).toBeGreaterThanOrEqual(22);
+    expect(onDays / plan.content_calendar.length).toBeGreaterThan(0.9);
     expect(plan.document_markdown.length).toBeGreaterThan(1500);
   }, 900_000);
 });

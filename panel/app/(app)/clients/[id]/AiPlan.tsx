@@ -9,7 +9,7 @@ import { Input, Textarea } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { Markdown } from "@/components/ui/Markdown";
 import { formatLabel, networkLabel } from "@/lib/marketing/content";
-import type { AiMarketingPlan } from "@/lib/marketing/aiPlanSchema";
+import { DAY_NAMES, expectedPieces, type AiMarketingPlan } from "@/lib/marketing/aiPlanSchema";
 import { activatePlanAndCreateCalendar, addPlanPiecesToCalendar, generateMarketingPlanWithAi } from "./aiPlanActions";
 
 function iso(d: Date): string {
@@ -31,7 +31,12 @@ export function AiPlanForm({ clientId, onDone }: { clientId: string; onDone: () 
   const [end, setEnd] = useState(def.end);
   const [budget, setBudget] = useState("");
   const [instructions, setInstructions] = useState("");
-  const [frequency, setFrequency] = useState<"auto" | "daily" | "5w" | "3w">("daily");
+  // dias de publicacion (0 = domingo … 6 = sabado); por defecto lunes a viernes
+  const [days, setDays] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [perDay, setPerDay] = useState(1);
+  const [aiDecides, setAiDecides] = useState(false);
+  const [budgetChoice, setBudgetChoice] = useState("ia");
+  const total = aiDecides ? null : expectedPieces({ days, perDay }, start, end);
   const [error, setError] = useState<string | null>(null);
   const [pending, run] = useTransition();
 
@@ -42,7 +47,16 @@ export function AiPlanForm({ clientId, onDone }: { clientId: string; onDone: () 
         e.preventDefault();
         run(async () => {
           setError(null);
-          const res = await generateMarketingPlanWithAi({ client_id: clientId, period_start: start, period_end: end, budget, instructions, frequency });
+          const budgetValue = budgetChoice === "ia" ? "" : budgetChoice === "otro" ? budget : budgetChoice;
+          const res = await generateMarketingPlanWithAi({
+            client_id: clientId,
+            period_start: start,
+            period_end: end,
+            budget: budgetValue,
+            instructions,
+            days: aiDecides ? [] : days,
+            per_day: perDay,
+          });
           if (res.error) setError(res.error);
           else {
             onDone();
@@ -57,20 +71,75 @@ export function AiPlanForm({ clientId, onDone }: { clientId: string; onDone: () 
       </p>
       <Input label="Desde" type="date" value={start} onChange={(e) => setStart(e.target.value)} required />
       <Input label="Hasta" type="date" value={end} onChange={(e) => setEnd(e.target.value)} required />
-      <label className="flex flex-col gap-1.5 text-sm">
+      <div className="flex flex-col gap-2 rounded-xl border border-border p-3 sm:col-span-2">
         <span className="text-xs font-medium text-text-muted">Frecuencia de publicación</span>
+        <label className="flex items-center gap-2 text-sm text-text-primary">
+          <input type="checkbox" checked={aiDecides} onChange={(e) => setAiDecides(e.target.checked)} />
+          Que la decida la IA
+        </label>
+        {!aiDecides && (
+          <>
+            <div className="flex flex-wrap gap-1.5">
+              {[1, 2, 3, 4, 5, 6, 0].map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]))}
+                  className={`min-h-10 min-w-12 rounded-xl border px-3 text-sm font-medium ${
+                    days.includes(d) ? "border-accent bg-accent/15 text-text-primary" : "border-border text-text-muted hover:text-text-primary"
+                  }`}
+                  aria-pressed={days.includes(d)}
+                >
+                  {DAY_NAMES[d].slice(0, 3).replace(/^./, (c) => c.toUpperCase())}
+                </button>
+              ))}
+              <button type="button" onClick={() => setDays([0, 1, 2, 3, 4, 5, 6])} className="min-h-10 rounded-xl px-3 text-xs text-accent underline">
+                Todos
+              </button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-sm text-text-primary">
+              <select
+                value={perDay}
+                onChange={(e) => setPerDay(Number(e.target.value))}
+                className="min-h-10 rounded-xl border border-border bg-surface px-3 text-sm text-text-primary"
+                aria-label="Piezas por día"
+              >
+                <option value={1}>1 pieza</option>
+                <option value={2}>2 piezas</option>
+                <option value={3}>3 piezas</option>
+              </select>
+              por cada día elegido
+              {total != null && (
+                <span className={`text-xs ${total > 45 || total === 0 ? "text-danger" : "text-text-muted"}`}>
+                  → {total} piezas en el período{total > 45 ? " (máximo 45: acortá el período o bajá la frecuencia)" : ""}
+                </span>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+      <label className="flex flex-col gap-1.5 text-sm">
+        <span className="text-xs font-medium text-text-muted">Presupuesto de pauta mensual</span>
         <select
-          value={frequency}
-          onChange={(e) => setFrequency(e.target.value as typeof frequency)}
+          value={budgetChoice}
+          onChange={(e) => setBudgetChoice(e.target.value)}
           className="min-h-10 rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:border-accent focus:outline-none"
         >
-          <option value="daily">Todos los días (planes de hasta 1 mes)</option>
-          <option value="5w">5 por semana (lunes a viernes)</option>
-          <option value="3w">3 por semana</option>
-          <option value="auto">Que decida la IA</option>
+          <option value="ia">Que lo recomiende la IA</option>
+          <option value="0">Sin pauta (solo orgánico)</option>
+          {[100000, 200000, 300000, 500000, 800000, 1000000, 1500000, 2000000, 3000000].map((v) => (
+            <option key={v} value={String(v)}>
+              ARS {v.toLocaleString("es-AR")}
+            </option>
+          ))}
+          <option value="otro">Otro monto…</option>
         </select>
       </label>
-      <Input label="Presupuesto de pauta mensual (opcional, ARS)" inputMode="numeric" value={budget} onChange={(e) => setBudget(e.target.value)} placeholder="Vacío = que lo recomiende la IA" />
+      {budgetChoice === "otro" ? (
+        <Input label="Monto mensual (ARS)" inputMode="numeric" value={budget} onChange={(e) => setBudget(e.target.value)} placeholder="Ej: 450000" />
+      ) : (
+        <div className="hidden sm:block" />
+      )}
       <div className="sm:col-span-2">
         <Textarea
           label="Indicaciones (opcional)"

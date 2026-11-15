@@ -11,7 +11,7 @@ import { aiErrorMessage, isAiConfigured } from "@/lib/ai/client";
 import { checkAiLimit } from "@/lib/trends/settings";
 import { createContentItemRecord } from "@/lib/marketing/contentItems";
 import { networkLabel } from "@/lib/marketing/content";
-import { generateAiMarketingPlan } from "@/lib/marketing/aiPlan";
+import { expectedPieces, generateAiMarketingPlan } from "@/lib/marketing/aiPlan";
 import { normalizeFormat, normalizeNetwork, type AiMarketingPlan, type PlanNetwork } from "@/lib/marketing/aiPlanSchema";
 
 const inputSchema = z.object({
@@ -20,8 +20,13 @@ const inputSchema = z.object({
   period_end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Elegí la fecha de fin." }),
   budget: z.string().max(30).default(""),
   instructions: z.string().max(3000).default(""),
-  frequency: z.enum(["auto", "daily", "5w", "3w"]).default("auto"),
+  // dias de la semana (0 = domingo … 6 = sabado); vacio = que decida la IA
+  days: z.array(z.number().int().min(0).max(6)).max(7).default([]),
+  per_day: z.number().int().min(1).max(3).default(1),
 });
+
+/** Tope de piezas por plan: arriba de esto el calendario no entra completo en una sola respuesta de la IA. */
+const MAX_PIECES = 45;
 
 /** Claude arma el plan completo y queda como borrador del cliente. */
 export async function generateMarketingPlanWithAi(input: z.input<typeof inputSchema>): Promise<{ createdId?: string; error?: string }> {
@@ -31,7 +36,12 @@ export async function generateMarketingPlanWithAi(input: z.input<typeof inputSch
   if (d.period_end < d.period_start) return { error: "La fecha de fin tiene que ser posterior a la de inicio." };
   const days = (Date.parse(d.period_end) - Date.parse(d.period_start)) / 86_400_000;
   if (days > 95) return { error: "Para que el calendario quede bien detallado, generá planes de hasta 3 meses." };
-  if (d.frequency === "daily" && days > 35) return { error: "Con publicación diaria, generá el plan de a un mes (así cada pieza queda bien detallada)." };
+  const frequency = d.days.length ? { days: Array.from(new Set(d.days)), perDay: d.per_day } : null;
+  const total = expectedPieces(frequency, d.period_start, d.period_end);
+  if (total === 0) return { error: "Con esos días no cae ninguna publicación dentro del período." };
+  if (total != null && total > MAX_PIECES) {
+    return { error: `Con esa frecuencia salen ${total} piezas: el máximo por plan es ${MAX_PIECES}. Acortá el período o bajá la frecuencia.` };
+  }
 
   const { userId, profile } = await requireClientAccess(d.client_id);
   if (!can(profile, "ai.use") && !can(profile, "trends.use")) return { error: "No tenés acceso a la IA." };
@@ -52,7 +62,7 @@ export async function generateMarketingPlanWithAi(input: z.input<typeof inputSch
       periodEnd: d.period_end,
       budgetArs: budget,
       instructions: d.instructions,
-      frequency: d.frequency,
+      frequency,
     });
   } catch (err) {
     return { error: err instanceof Error && (err.message.startsWith("El calendario") || err.message.startsWith("El plan")) ? err.message : err instanceof Error && err.message.startsWith("La IA") ? err.message : aiErrorMessage(err) };

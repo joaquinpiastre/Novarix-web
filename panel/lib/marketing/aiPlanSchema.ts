@@ -123,3 +123,19 @@ export function buildAiPlan(documentMarkdown: string, data: PlanData, periodStar
     deliverables: Array.from(counts.entries()).map(([format, committed]) => ({ format, committed })),
   };
 }
+
+/** Frecuencia elegida por la persona: dias de la semana (0 = domingo … 6 = sabado) y piezas por dia. null = que decida la IA. */
+export type PlanFrequency = { days: number[]; perDay: number } | null;
+
+export const DAY_NAMES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+
+/** Cuantas piezas salen con esa frecuencia en el periodo (para validar y para pedirselo a la IA). */
+export function expectedPieces(freq: PlanFrequency, periodStart: string, periodEnd: string): number | null {
+  if (!freq || freq.days.length === 0) return null;
+  let n = 0;
+  for (let t = Date.parse(`${periodStart}T12:00:00Z`); t <= Date.parse(`${periodEnd}T12:00:00Z`); t += 86_400_000) {
+    if (freq.days.includes(new Date(t).getUTCDay())) n += freq.perDay;
+  }
+  return n;
+}
+

@@ -8,7 +8,10 @@ import { CHECKLIST_ITEMS } from "./checklist";
 import { commercialDatesForYear } from "@/lib/ideas/commercialDates";
 import { customCommercialDates } from "@/lib/ideas/commercialDatesJob";
 import type Anthropic from "@anthropic-ai/sdk";
-import { buildAiPlan, planDataSchema, type AiMarketingPlan } from "./aiPlanSchema";
+import { buildAiPlan, DAY_NAMES, expectedPieces, planDataSchema, type AiMarketingPlan, type PlanFrequency } from "./aiPlanSchema";
+
+export { expectedPieces };
+export type { PlanFrequency };
 
 // Plan de marketing completo armado por Claude con todo lo que el panel sabe
 // del cliente. El resultado queda como borrador para revisar y activar.
@@ -104,14 +107,13 @@ const DOCUMENT_SECTIONS = `Escribí el plan en Markdown con estas secciones (tí
 ## Primeros pasos (semana 1)
 No incluyas el calendario pieza por pieza: eso va aparte.`;
 
-export type PlanFrequency = "auto" | "daily" | "5w" | "3w";
-
-const FREQUENCY_TEXT: Record<PlanFrequency, string> = {
-  auto: "",
-  daily: "UNA pieza de contenido por día, TODOS los días del período (incluidos fines de semana), sin saltear ninguna fecha.",
-  "5w": "5 piezas por semana (de lunes a viernes).",
-  "3w": "3 piezas por semana (por ejemplo lunes, miércoles y viernes).",
-};
+function frequencyText(freq: PlanFrequency, periodStart: string, periodEnd: string): string {
+  if (!freq || freq.days.length === 0) return "";
+  const days = [...freq.days].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map((d) => DAY_NAMES[d]);
+  const total = expectedPieces(freq, periodStart, periodEnd);
+  const which = days.length === 7 ? "TODOS los días de la semana" : `SOLO los ${days.join(", ")}`;
+  return `Publicar exactamente ${freq.perDay} pieza${freq.perDay === 1 ? "" : "s"} por día, ${which}. Ninguna pieza en otros días. En total son ${total} piezas en el período: el calendario tiene que tenerlas todas, cada una con su fecha.`;
+}
 
 export interface PlanGenerationInput {
   context: string;
@@ -129,8 +131,14 @@ export async function runPlanGeneration(input: PlanGenerationInput): Promise<{ p
 ${input.context}
 </cliente>`,
     `<periodo>${input.periodStart} a ${input.periodEnd}</periodo>`,
-    `<presupuesto_pauta_mensual_ars>${input.budgetArs != null ? input.budgetArs : "no definido"}</presupuesto_pauta_mensual_ars>`,
-    input.frequency && input.frequency !== "auto" ? `<frecuencia_de_publicacion>${FREQUENCY_TEXT[input.frequency]}</frecuencia_de_publicacion>` : "",
+    `<presupuesto_pauta_mensual_ars>${
+      input.budgetArs == null
+        ? "no definido: recomendá uno acorde al negocio"
+        : input.budgetArs === 0
+          ? "0: este período NO hay pauta paga, todo es orgánico"
+          : input.budgetArs
+    }</presupuesto_pauta_mensual_ars>`,
+    input.frequency ? `<frecuencia_de_publicacion>${frequencyText(input.frequency, input.periodStart, input.periodEnd)}</frecuencia_de_publicacion>` : "",
     input.instructions.trim()
       ? `<indicaciones_del_equipo>
 ${input.instructions.trim().slice(0, 3000)}
@@ -160,7 +168,7 @@ ${DOCUMENT_SECTIONS}` }],
   const data = await getAiClient().beta.messages.parse({
     model: AI_MODEL,
     // El SDK exige streaming por encima de ~21k tokens en llamadas comunes: 20k alcanza para un mes diario.
-    max_tokens: input.frequency === "daily" ? 20000 : 16000,
+    max_tokens: (expectedPieces(input.frequency ?? null, input.periodStart, input.periodEnd) ?? 20) > 20 ? 20000 : 16000,
     ...AI_FALLBACK,
     output_config: { effort: "low", format: betaZodOutputFormat(planDataSchema) },
     system: SYSTEM,
