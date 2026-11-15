@@ -131,6 +131,8 @@ export interface MarketingPlan {
   ai_plan?: unknown;
   generated_by_ai?: boolean;
   calendar_created_at?: string | null;
+  /** Piezas del plan IA ya pasadas al calendario: { indice: content_item_id }. */
+  calendar_items?: Record<string, string>;
 }
 
 export interface Campaign {

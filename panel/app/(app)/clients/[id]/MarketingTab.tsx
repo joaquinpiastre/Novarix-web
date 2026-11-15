@@ -177,6 +177,7 @@ function PlanCard({
             clientId={clientId}
             status={plan.status}
             calendarCreated={Boolean(plan.calendar_created_at)}
+            calendarItems={(plan.calendar_items as Record<string, string> | undefined) ?? {}}
             canActivate={canApprove}
           />
         ) : (
