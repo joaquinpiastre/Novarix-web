@@ -853,6 +853,7 @@ export function ClientDetailTabs({
       <MetricsTab
         metaOAuthEnabled={metaOAuthEnabled}
         clientId={client.id}
+        clientName={client.name}
         connections={metaConnections}
         assets={metaAssets}
         dailySpend={dailySpend}

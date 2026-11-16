@@ -3,7 +3,7 @@ import { createSignedToken } from "@/lib/auth/signedToken";
 import { requireClient } from "@/lib/auth/requireClient";
 import { requireClientAccess } from "@/lib/auth/requireClientAccess";
 import { buildMetaLoginUrl, callbackUrlForHost, isMetaOAuthConfigured } from "@/lib/meta/oauth";
-import { metaReturnPath, requestHost, type MetaOAuthState } from "@/lib/meta/oauthState";
+import { metaReturnPath, publicUrl, requestHost, type MetaOAuthState } from "@/lib/meta/oauthState";
 
 export const dynamic = "force-dynamic";
 
@@ -24,13 +24,13 @@ export async function GET(request: NextRequest) {
   if (from === "portal") {
     const access = await requireClient();
     const back = metaReturnPath("portal", access.clientId, host);
-    if (access.isAdminPreview) return NextResponse.redirect(new URL(`${back}?meta=preview`, request.url));
-    if (access.clientRole !== "owner") return NextResponse.redirect(new URL(`${back}?meta=owner_only`, request.url));
+    if (access.isAdminPreview) return NextResponse.redirect(publicUrl(`${back}?meta=preview`, request.headers));
+    if (access.clientRole !== "owner") return NextResponse.redirect(publicUrl(`${back}?meta=owner_only`, request.headers));
     clientId = access.clientId;
     userId = access.userId;
   } else {
     const requested = request.nextUrl.searchParams.get("client") ?? "";
-    if (!/^[0-9a-f-]{36}$/i.test(requested)) return NextResponse.redirect(new URL("/clients", request.url));
+    if (!/^[0-9a-f-]{36}$/i.test(requested)) return NextResponse.redirect(publicUrl("/clients", request.headers));
     const access = await requireClientAccess(requested);
     clientId = requested;
     userId = access.userId;
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 
   const back = metaReturnPath(from, clientId, host);
   if (!isMetaOAuthConfigured()) {
-    return NextResponse.redirect(new URL(`${back}${back.includes("?") ? "&" : "?"}meta=not_configured`, request.url));
+    return NextResponse.redirect(publicUrl(`${back}${back.includes("?") ? "&" : "?"}meta=not_configured`, request.headers));
   }
   const redirectUri = callbackUrlForHost(host);
   if (!redirectUri) return new NextResponse("Dominio no permitido para conectar Meta.", { status: 400 });

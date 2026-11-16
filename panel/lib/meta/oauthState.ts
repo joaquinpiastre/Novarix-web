@@ -37,6 +37,7 @@ export function parseMetaOAuthState(raw: string | null): MetaOAuthState | null {
 
 export const META_CONNECT_MESSAGES: Record<string, { tone: "success" | "danger" | "warning"; text: string }> = {
   ok: { tone: "success", text: "¡Listo! Facebook e Instagram quedaron conectados. Las métricas aparecen en unos minutos." },
+  choose: { tone: "success", text: "Facebook quedó conectado. Ahora elegí qué página, Instagram y cuenta publicitaria son de este cliente." },
   cancelled: { tone: "warning", text: "Se canceló la conexión con Facebook. Podés intentarlo de nuevo cuando quieras." },
   no_assets: { tone: "warning", text: "Se conectó, pero no se compartió ninguna página, Instagram ni cuenta publicitaria. Volvé a conectar y elegí al menos una." },
   expired: { tone: "danger", text: "La conexión tardó demasiado o cambió la sesión. Volvé a intentarlo." },
@@ -45,3 +46,17 @@ export const META_CONNECT_MESSAGES: Record<string, { tone: "success" | "danger" 
   preview: { tone: "warning", text: "En modo \"ver como cliente\" no se puede conectar Facebook." },
   owner_only: { tone: "warning", text: "Solo el titular de la cuenta puede conectar Facebook e Instagram." },
 };
+
+const KNOWN_HOSTS = ["panel.novarix.agency", "clientes.novarix.agency"];
+
+/**
+ * URL absoluta para redirigir al navegador. Adentro de Railway request.url es
+ * la direccion interna (localhost:8080), asi que se arma con el Host publico
+ * del pedido; si no es un dominio conocido, se usa el del panel.
+ */
+export function publicUrl(path: string, headers: Headers): string {
+  const host = (requestHost(headers) ?? "").split(",")[0].trim().toLowerCase();
+  const bare = host.replace(/:\d+$/, "");
+  if (bare === "localhost" || bare === "127.0.0.1") return `http://${host}${path}`;
+  return `https://${KNOWN_HOSTS.includes(bare) ? bare : "panel.novarix.agency"}${path}`;
+}

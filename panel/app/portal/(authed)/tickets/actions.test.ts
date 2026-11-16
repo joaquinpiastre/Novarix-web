@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const queryMock = vi.fn();
 const queryOneMock = vi.fn();
 const requireClientMock = vi.fn();
-const assertNotPreviewMock = vi.fn(() => null);
+const assertNotPreviewMock = vi.fn((): { error: string } | null => null);
 const redirectMock = vi.fn((path: string) => {
   throw new Error(`REDIRECT:${path}`);
 });

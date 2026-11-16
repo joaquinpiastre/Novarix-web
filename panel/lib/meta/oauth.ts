@@ -1,6 +1,6 @@
 import "server-only";
 import { query, queryOne } from "@/lib/db";
-import { encrypt } from "@/lib/crypto/encryption";
+import { decrypt, encrypt } from "@/lib/crypto/encryption";
 import { log } from "@/lib/log";
 import { discoverMetaAssets, type AvailableMetaAsset } from "./assets";
 import { GRAPH_BASE, metaGet, MetaApiError } from "./client";
@@ -139,9 +139,10 @@ export async function exchangeMetaCode(code: string, redirectUri: string): Promi
 }
 
 /**
- * Guarda (o reemplaza) la conexion de Meta del cliente y agrega todos los
- * activos que la persona compartio en el dialogo de Facebook. Lanza la
- * primera sincronizacion en segundo plano.
+ * Guarda (o reemplaza) la conexion de Meta del cliente. NO agrega cuentas solo:
+ * la persona puede administrar paginas de varios portfolios (de otros
+ * clientes), asi que despues elige cuales son de este cliente
+ * (saveMetaAssetSelection). Devuelve lo que encontro para mostrar la eleccion.
  */
 export async function saveOAuthConnection(input: {
   clientId: string;
@@ -173,19 +174,83 @@ export async function saveOAuthConnection(input: {
   }
 
   const assets = await discoverMetaAssets(input.token);
-  for (const a of assets) {
+  return { connectionId, assets };
+}
+
+export interface MetaAssetChoice extends AvailableMetaAsset {
+  selected: boolean;
+  /** Si esta cuenta ya esta asignada a otro cliente del panel. */
+  used_by: string | null;
+}
+
+/** Lo que el token de la conexion del cliente puede ver, marcando lo ya elegido y lo que usa otro cliente. */
+export async function listMetaAssetChoices(clientId: string): Promise<{ connectionId: string; choices: MetaAssetChoice[] } | { error: string }> {
+  const conn = await queryOne<{ id: string; access_token: string }>(
+    "select id, access_token from meta_connections where client_id = $1 order by created_at desc limit 1",
+    [clientId]
+  );
+  if (!conn) return { error: "Este cliente no tiene Facebook conectado." };
+  let assets: AvailableMetaAsset[];
+  try {
+    assets = await discoverMetaAssets(decrypt(conn.access_token));
+  } catch {
+    return { error: "No se pudo leer la cuenta de Facebook. Probá reconectar." };
+  }
+  const current = await query<{ asset_type: string; external_id: string }>(
+    "select asset_type::text as asset_type, external_id from meta_assets where connection_id = $1 and active = true",
+    [conn.id]
+  );
+  const others = await query<{ asset_type: string; external_id: string; client_name: string }>(
+    `select a.asset_type::text as asset_type, a.external_id, c.name as client_name
+     from meta_assets a join clients c on c.id = a.client_id
+     where a.client_id <> $1 and a.active = true and c.status <> 'eliminado'`,
+    [clientId]
+  );
+  const key = (t: string, id: string) => `${t}:${id}`;
+  const selected = new Set(current.map((r) => key(r.asset_type, r.external_id)));
+  const usedBy = new Map(others.map((r) => [key(r.asset_type, r.external_id), r.client_name]));
+  return {
+    connectionId: conn.id,
+    choices: assets.map((a) => ({
+      ...a,
+      selected: selected.has(key(a.type, a.external_id)),
+      used_by: usedBy.get(key(a.type, a.external_id)) ?? null,
+    })),
+  };
+}
+
+/**
+ * Deja en la conexion SOLO las cuentas elegidas: agrega las nuevas y borra las
+ * que se destildaron (con sus metricas, para no mezclar datos de otro
+ * cliente). Lanza la sincronizacion.
+ */
+export async function saveMetaAssetSelection(
+  clientId: string,
+  selected: { type: string; external_id: string }[]
+): Promise<{ saved: number } | { error: string }> {
+  const listed = await listMetaAssetChoices(clientId);
+  if ("error" in listed) return listed;
+  const allowed = new Map(listed.choices.map((c) => [`${c.type}:${c.external_id}`, c]));
+  const chosen = selected.map((s) => allowed.get(`${s.type}:${s.external_id}`)).filter((c): c is MetaAssetChoice => Boolean(c));
+
+  for (const a of chosen) {
     await query(
       `insert into meta_assets (connection_id, client_id, asset_type, external_id, name)
        values ($1, $2, $3, $4, $5)
        on conflict (connection_id, asset_type, external_id) do update set active = true, name = excluded.name`,
-      [connectionId, input.clientId, a.type, a.external_id, a.name]
+      [listed.connectionId, clientId, a.type, a.external_id, a.name]
     );
   }
-
-  // Primera sincronizacion (30 dias) sin hacer esperar a la persona.
-  syncConnection(connectionId, 30).catch((err) =>
-    log.error("meta oauth first sync failed", { connectionId, err: String(err) })
+  const keep = chosen.map((a) => `${a.type}:${a.external_id}`);
+  await query(
+    `delete from meta_assets where connection_id = $1 and not ((asset_type::text || ':' || external_id) = any($2::text[]))`,
+    [listed.connectionId, keep]
   );
 
-  return { connectionId, assets };
+  if (chosen.length) {
+    syncConnection(listed.connectionId, 30).catch((err) =>
+      log.error("meta first sync after selection failed", { connectionId: listed.connectionId, err: String(err) })
+    );
+  }
+  return { saved: chosen.length };
 }

@@ -7,7 +7,7 @@ import { recordAudit } from "@/lib/audit/log";
 import { getClientIp } from "@/lib/utils/request";
 import { log } from "@/lib/log";
 import { callbackUrlForHost, exchangeMetaCode, isMetaOAuthConfigured, saveOAuthConnection } from "@/lib/meta/oauth";
-import { metaReturnPath, parseMetaOAuthState, requestHost } from "@/lib/meta/oauthState";
+import { metaReturnPath, parseMetaOAuthState, publicUrl, requestHost } from "@/lib/meta/oauthState";
 
 export const dynamic = "force-dynamic";
 
@@ -18,10 +18,10 @@ export async function GET(request: NextRequest) {
   const state = parseMetaOAuthState(verifySignedToken(params.get("state")));
   const go = (from: "panel" | "portal", clientId: string, status: string, extra = "") => {
     const back = metaReturnPath(from, clientId, host);
-    return NextResponse.redirect(new URL(`${back}${back.includes("?") ? "&" : "?"}meta=${status}${extra}`, request.url));
+    return NextResponse.redirect(publicUrl(`${back}${back.includes("?") ? "&" : "?"}meta=${status}${extra}`, request.headers));
   };
 
-  if (!state) return NextResponse.redirect(new URL("/?meta=expired", request.url));
+  if (!state) return NextResponse.redirect(publicUrl("/?meta=expired", request.headers));
 
   // Quien vuelve tiene que ser quien arranco, y seguir teniendo acceso a ese cliente.
   const { userId } = await getSessionProfile();
@@ -62,7 +62,8 @@ export async function GET(request: NextRequest) {
       ip: getClientIp(),
     });
     if (assets.length === 0) return go(state.f, state.c, "no_assets");
-    return go(state.f, state.c, "ok", `&assets=${assets.length}`);
+    // Siempre se elige que cuentas son de este cliente (la persona puede manejar varios portfolios).
+    return go(state.f, state.c, "choose");
   } catch (err) {
     log.error("meta oauth callback failed", { clientId: state.c, err: String(err) });
     return go(state.f, state.c, "error");

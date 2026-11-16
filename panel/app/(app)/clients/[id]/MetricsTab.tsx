@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { META_CONNECT_MESSAGES } from "@/lib/meta/oauthState";
+import { AssetChooser } from "@/components/meta/AssetChooser";
+import { getMetaChoices, saveMetaChoices } from "./metaChoiceActions";
 import { useFormState, useFormStatus } from "react-dom";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Card, CardTitle } from "@/components/ui/Card";
@@ -16,18 +18,16 @@ import {
   type Alert,
   type AlertSeverity,
   type MetaAsset,
+  type MetaAssetType,
   type MetaConnection,
 } from "@/lib/types/domain";
 import {
-  addMetaAsset,
   connectMeta,
   disconnectMeta,
-  listAvailableMetaAssets,
   removeMetaAsset,
   resolveAlert,
   syncMetaNow,
   type ActionState,
-  type ListAssetsState,
   type SyncNowState,
 } from "./metaActions";
 import type { DailySpendPoint } from "./page";
@@ -110,59 +110,33 @@ function ConnectForm({ clientId, oauthEnabled }: { clientId: string; oauthEnable
   );
 }
 
-function AssetPicker({ clientId, connectionId }: { clientId: string; connectionId: string }) {
-  const [state, formAction] = useFormState<ListAssetsState, FormData>(listAvailableMetaAssets, {});
-
+function ChooserPanel({ clientId, clientName, onDone }: { clientId: string; clientName: string; onDone: () => void }) {
+  const load = useCallback(() => getMetaChoices(clientId), [clientId]);
+  const save = useCallback((selected: { type: MetaAssetType; external_id: string }[]) => saveMetaChoices(clientId, selected), [clientId]);
   return (
-    <div className="mt-4 rounded-xl border border-border bg-surface-hover p-4">
-      <form action={formAction}>
-        <input type="hidden" name="client_id" value={clientId} />
-        <input type="hidden" name="connection_id" value={connectionId} />
-        <SubmitButton label="Buscar cuentas disponibles" pendingLabel="Buscando…" />
-      </form>
-      {state.error && <p className="mt-2 text-sm text-danger">{state.error}</p>}
-      {state.assets && (
-        <ul className="mt-3 divide-y divide-border">
-          {state.assets.map((a) => (
-            <li key={`${a.type}-${a.external_id}`} className="flex items-center justify-between gap-3 py-2">
-              <div>
-                <p className="text-sm text-text-primary">{a.name}</p>
-                <p className="text-xs text-text-muted">{META_ASSET_TYPE_LABELS[a.type]}</p>
-              </div>
-              <form
-                action={(fd) => {
-                  fd.set("client_id", clientId);
-                  fd.set("connection_id", connectionId);
-                  fd.set("asset_type", a.type);
-                  fd.set("external_id", a.external_id);
-                  fd.set("name", a.name);
-                  addMetaAsset(fd);
-                }}
-              >
-                <Button type="submit" variant="secondary">
-                  Agregar
-                </Button>
-              </form>
-            </li>
-          ))}
-        </ul>
-      )}
+    <div className="mt-4 rounded-xl border border-accent/40 bg-surface-hover p-4">
+      <p className="mb-3 text-sm font-semibold text-text-primary">¿Qué cuentas son de {clientName}?</p>
+      <AssetChooser clientName={clientName} load={load} save={save} onDone={onDone} />
     </div>
   );
 }
 
 function ConnectionCard({
   clientId,
+  clientName,
   connection,
   assets,
   oauthEnabled,
 }: {
   clientId: string;
+  clientName: string;
   connection: MetaConnection;
   assets: MetaAsset[];
   oauthEnabled: boolean;
 }) {
-  const [showPicker, setShowPicker] = useState(false);
+  const params = useSearchParams();
+  // Recien conectado (o sin cuentas elegidas): se abre directo la eleccion.
+  const [showPicker, setShowPicker] = useState(params.get("meta") === "choose" || assets.length === 0);
   const [syncState, syncAction] = useFormState<SyncNowState, FormData>(syncMetaNow, {});
 
   return (
@@ -187,7 +161,7 @@ function ConnectionCard({
           <SubmitButton label="Sincronizar ahora" pendingLabel="Sincronizando…" />
         </form>
         <Button variant="secondary" onClick={() => setShowPicker((v) => !v)}>
-          {showPicker ? "Cerrar" : "Agregar activo"}
+          {showPicker ? "Cerrar elección" : "Elegir cuentas del cliente"}
         </Button>
         {oauthEnabled && (
           <a
@@ -208,10 +182,10 @@ function ConnectionCard({
       {syncState.error && <p className="mt-2 text-sm text-danger">{syncState.error}</p>}
       {syncState.ok && <p className="mt-2 text-sm text-success">Sincronizado.</p>}
 
-      {showPicker && <AssetPicker clientId={clientId} connectionId={connection.id} />}
+      {showPicker && <ChooserPanel clientId={clientId} clientName={clientName} onDone={() => setShowPicker(false)} />}
 
       <ul className="mt-4 divide-y divide-border">
-        {assets.length === 0 && <p className="text-sm text-text-muted">Sin activos agregados.</p>}
+        {assets.length === 0 && <p className="text-sm text-text-muted">Todavía no elegiste qué cuentas son de este cliente.</p>}
         {assets.map((a) => (
           <li key={a.id} className="flex items-center justify-between gap-3 py-2">
             <div>
@@ -326,6 +300,7 @@ function AlertsCard({ clientId, alerts }: { clientId: string; alerts: Alert[] })
 
 export function MetricsTab({
   clientId,
+  clientName,
   connections,
   assets,
   dailySpend,
@@ -334,6 +309,7 @@ export function MetricsTab({
 }: {
   metaOAuthEnabled: boolean;
   clientId: string;
+  clientName: string;
   connections: MetaConnection[];
   assets: MetaAsset[];
   dailySpend: DailySpendPoint[];
@@ -351,6 +327,7 @@ export function MetricsTab({
             key={c.id}
             oauthEnabled={metaOAuthEnabled}
             clientId={clientId}
+            clientName={clientName}
             connection={c}
             assets={assets.filter((a) => a.connection_id === c.id)}
           />

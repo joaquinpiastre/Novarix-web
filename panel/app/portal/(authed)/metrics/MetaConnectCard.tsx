@@ -1,4 +1,5 @@
-import { query } from "@/lib/db";
+import { query, queryOne } from "@/lib/db";
+import { PortalAssetChooser } from "./PortalAssetChooser";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { isMetaOAuthConfigured } from "@/lib/meta/oauth";
 import { META_CONNECT_MESSAGES } from "@/lib/meta/oauthState";
@@ -28,8 +29,15 @@ export async function MetaConnectCard({
      order by a.asset_type, a.name`,
     [clientId]
   );
+  const conn = await queryOne<{ client_name: string; has_connection: boolean }>(
+    `select c.name as client_name,
+            exists (select 1 from meta_connections m where m.client_id = c.id and m.status <> 'error') as has_connection
+     from clients c where c.id = $1`,
+    [clientId]
+  );
   const msg = status ? META_CONNECT_MESSAGES[status] : null;
   const connected = assets.length > 0;
+  const canChoose = Boolean(conn?.has_connection) && isOwner && !isPreview;
 
   if (!configured && !connected && !msg) return null;
 
@@ -57,6 +65,8 @@ export async function MetaConnectCard({
           ))}
         </ul>
       )}
+
+      {canChoose && <PortalAssetChooser clientName={conn!.client_name} initialOpen={status === "choose" || !connected} />}
 
       {configured &&
         (isOwner && !isPreview ? (
