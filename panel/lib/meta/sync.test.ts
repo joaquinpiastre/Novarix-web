@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const queryMock = vi.fn();
 const queryOneMock = vi.fn();
 const metaGetMock = vi.fn();
+const metaGetAllPagesMock = vi.fn();
 
 vi.mock("@/lib/db", () => ({ query: (...a: unknown[]) => queryMock(...a), queryOne: (...a: unknown[]) => queryOneMock(...a) }));
 vi.mock("@/lib/crypto/encryption", () => ({ decrypt: (s: string) => s }));
@@ -20,10 +21,10 @@ vi.mock("./client", async () => {
       super(message);
     }
   }
-  return { metaGet: (...a: unknown[]) => metaGetMock(...a), MetaApiError };
+  return { metaGet: (...a: unknown[]) => metaGetMock(...a), metaGetAllPages: (...a: unknown[]) => metaGetAllPagesMock(...a), MetaApiError };
 });
 
-const { syncConnection } = await import("./sync");
+const { syncConnection, syncAllActiveConnections } = await import("./sync");
 const { MetaApiError } = await import("./client");
 
 const CONN = { id: "conn-1", client_id: "client-1", access_token: "USER_TOKEN" };
@@ -36,9 +37,10 @@ beforeEach(() => {
   queryMock.mockReset();
   queryOneMock.mockReset();
   metaGetMock.mockReset();
+  metaGetAllPagesMock.mockReset();
   queryOneMock.mockImplementation(async (sql: string) => {
     if (sql.includes("from meta_connections")) return CONN;
-    if (sql.includes("count(*)")) return { n: 5 }; // ya tiene datos: sync corta
+    if (sql.includes("max(date)")) return { gap: 0 }; // ya tiene datos al dia: sync corta
     return null;
   });
 });
@@ -109,5 +111,76 @@ describe("sync de Instagram", () => {
     const seriesRow = rows.find((r) => r[4] === 2);
     expect(seriesRow?.[5]).toBe(100); // reach
     expect(rows.some((r) => r[6] === 3 && r[7] === 3 && r[8] === 3 && r[10] === 3)).toBe(true); // views, interacciones, cuentas, toques
+  });
+});
+
+function adInserts() {
+  return queryMock.mock.calls.filter(([sql]) => String(sql).includes("insert into meta_insights_daily"));
+}
+
+function requestedSince(params: Record<string, string>): string {
+  return JSON.parse(params.time_range).since;
+}
+
+function daysAgo(n: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - n);
+  return d.toISOString().slice(0, 10);
+}
+
+describe("sync de la cuenta publicitaria", () => {
+  beforeEach(() => {
+    queryMock.mockImplementation(async (sql: string) =>
+      sql.includes("from meta_assets") ? [{ id: "asset-ad", client_id: "client-1", asset_type: "ad_account", external_id: "123", name: "ADS" }] : []
+    );
+  });
+
+  it("lee todas las paginas (Meta devuelve de a 25 filas) y guarda cada dia", async () => {
+    const rows = Array.from({ length: 40 }, (_, i) => ({ date_start: daysAgo(i), campaign_id: "c1", campaign_name: "WhatsApp", spend: "1000" }));
+    metaGetAllPagesMock.mockResolvedValue(rows);
+
+    await syncConnection("conn-1", 3);
+
+    expect(metaGetAllPagesMock).toHaveBeenCalledTimes(1);
+    expect(metaGetAllPagesMock.mock.calls[0][0]).toBe("act_123/insights");
+    expect(adInserts()).toHaveLength(40);
+  });
+
+  it("si la sync estuvo trabada, pide desde el ultimo dia guardado", async () => {
+    queryOneMock.mockImplementation(async (sql: string) => {
+      if (sql.includes("from meta_connections")) return CONN;
+      if (sql.includes("max(date)")) return { gap: 6 }; // ultimo dato hace 6 dias
+      return null;
+    });
+    metaGetAllPagesMock.mockResolvedValue([]);
+    await syncConnection("conn-1", 3);
+    expect(requestedSince(metaGetAllPagesMock.mock.calls[0][2])).toBe(daysAgo(8));
+  });
+
+  it("la primera vez trae 30 dias", async () => {
+    queryOneMock.mockImplementation(async (sql: string) => {
+      if (sql.includes("from meta_connections")) return CONN;
+      if (sql.includes("max(date)")) return { gap: null }; // sin datos
+      return null;
+    });
+    metaGetAllPagesMock.mockResolvedValue([]);
+    await syncConnection("conn-1", 3);
+    expect(requestedSince(metaGetAllPagesMock.mock.calls[0][2])).toBe(daysAgo(30));
+  });
+
+  it("devuelve que cuenta fallo y por que", async () => {
+    metaGetAllPagesMock.mockRejectedValue(new MetaApiError("Error validating access token", 190));
+    const res = await syncConnection("conn-1", 3);
+    expect(res).toEqual({ synced: 0, failed: [{ name: "ADS", error: "Error validating access token" }] });
+  });
+});
+
+describe("sync diaria", () => {
+  it("tambien reintenta las conexiones con error (antes quedaban trabadas para siempre)", async () => {
+    queryMock.mockResolvedValue([]);
+    await syncAllActiveConnections();
+    const sql = String(queryMock.mock.calls[0][0]);
+    expect(sql).toContain("from meta_connections");
+    expect(sql).not.toContain("'error'");
   });
 });

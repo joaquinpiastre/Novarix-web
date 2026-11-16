@@ -2,7 +2,7 @@ import "server-only";
 import { query, queryOne } from "@/lib/db";
 import { decrypt } from "@/lib/crypto/encryption";
 import { log } from "@/lib/log";
-import { metaGet, MetaApiError } from "./client";
+import { metaGet, metaGetAllPages, MetaApiError } from "./client";
 import {
   AD_INSIGHTS_FIELDS,
   IG_FEED_INSIGHTS,
@@ -45,15 +45,37 @@ interface AdInsightRow {
   action_values?: { action_type: string; value: string }[];
 }
 
+/**
+ * Cuantos dias pedirle a Meta. Lo normal es `sinceDays`, pero si la cuenta es
+ * nueva se traen `firstDays`, y si hubo un hueco (la sync estuvo trabada o el
+ * server caido a la hora del cron) se pide desde el ultimo dia guardado.
+ */
+async function daysToSync(
+  table: "meta_insights_daily" | "social_insights_daily",
+  assetId: string,
+  sinceDays: number,
+  firstDays: number,
+  maxDays: number
+): Promise<number> {
+  const row = await queryOne<{ gap: number | null }>(`select (current_date - max(date))::int as gap from ${table} where asset_id = $1`, [assetId]);
+  const gap = row?.gap;
+  if (gap == null) return Math.min(Math.max(sinceDays, firstDays), maxDays);
+  return Math.min(Math.max(sinceDays, gap + 2), maxDays);
+}
+
 async function syncAdAccount(asset: MetaAsset, token: string, sinceDays: number): Promise<void> {
-  const rows = await metaGet<{ data: AdInsightRow[] }>(`act_${asset.external_id}/insights`, token, {
+  const days = await daysToSync("meta_insights_daily", asset.id, sinceDays, 30, 90);
+  // Una fila por campaña y por dia: Meta pagina de a 25, asi que hay que
+  // seguir las paginas (antes se leia solo la primera y faltaban dias).
+  const rows = await metaGetAllPages<AdInsightRow>(`act_${asset.external_id}/insights`, token, {
     level: "campaign",
     fields: AD_INSIGHTS_FIELDS,
     time_increment: "1",
-    time_range: JSON.stringify({ since: daysAgoISO(sinceDays), until: todayISO() }),
+    time_range: JSON.stringify({ since: daysAgoISO(days), until: todayISO() }),
+    limit: "500",
   });
 
-  for (const r of rows.data ?? []) {
+  for (const r of rows) {
     await query(
       `insert into meta_insights_daily
          (asset_id, client_id, date, level, campaign_id, campaign_name, spend, impressions, reach, clicks,
@@ -127,10 +149,9 @@ async function saveSocialDays(asset: MetaAsset, byDate: SocialByDate): Promise<v
   }
 }
 
-/** Primera vez que se sincroniza esta cuenta: se traen 30 dias aunque sea la sync diaria. */
-async function socialDaysToSync(asset: MetaAsset, sinceDays: number): Promise<number> {
-  const has = await queryOne<{ n: number }>("select count(*)::int as n from social_insights_daily where asset_id = $1", [asset.id]);
-  return (has?.n ?? 0) > 0 ? sinceDays : Math.max(sinceDays, 30);
+/** Primera vez (o despues de un hueco): hasta 30 dias, que es lo maximo que acepta Instagram por pedido. */
+function socialDaysToSync(asset: MetaAsset, sinceDays: number): Promise<number> {
+  return daysToSync("social_insights_daily", asset.id, sinceDays, 30, 30);
 }
 
 /**
@@ -318,12 +339,18 @@ async function syncInstagramMedia(asset: MetaAsset, token: string): Promise<void
   }
 }
 
+export interface SyncResult {
+  synced: number;
+  failed: { name: string; error: string }[];
+}
+
 /** Sincroniza todos los activos de una conexion. sinceDays=3 para la sync diaria normal (Meta reajusta datos de los ultimos dias); mas alto para un backfill inicial. */
-export async function syncConnection(connectionId: string, sinceDays = 3): Promise<void> {
+export async function syncConnection(connectionId: string, sinceDays = 3): Promise<SyncResult> {
+  const result: SyncResult = { synced: 0, failed: [] };
   const connection = await queryOne<MetaConnection>("select * from meta_connections where id = $1", [
     connectionId,
   ]);
-  if (!connection) return;
+  if (!connection) return result;
 
   const token = decrypt(connection.access_token);
   const assets = await query<MetaAsset>(
@@ -340,9 +367,11 @@ export async function syncConnection(connectionId: string, sinceDays = 3): Promi
         await syncInstagram(asset, token, sinceDays);
         await syncInstagramMedia(asset, token);
       }
+      result.synced++;
     } catch (err) {
       hadError = true;
       const message = err instanceof MetaApiError ? err.message : String(err);
+      result.failed.push({ name: asset.name ?? asset.external_id, error: message });
       log.error("meta sync asset failed", { assetId: asset.id, assetType: asset.asset_type, err: message });
       await query("update meta_connections set status = 'error', last_error = $1 where id = $2", [
         message,
@@ -361,12 +390,18 @@ export async function syncConnection(connectionId: string, sinceDays = 3): Promi
   }
 
   await checkAlertsForClient(connection.client_id);
+  return result;
 }
 
+/**
+ * Sync diaria. Tambien reintenta las conexiones con error: si no, un fallo
+ * pasajero (o una metrica que Meta retiro) dejaba al cliente sin datos para
+ * siempre.
+ */
 export async function syncAllActiveConnections(): Promise<void> {
   const connections = await query<{ id: string }>(
     `select mc.id from meta_connections mc join clients c on c.id = mc.client_id
-     where mc.status != 'error' and c.status <> 'inactivo'`
+     where c.status not in ('inactivo', 'eliminado')`
   );
   for (const c of connections) {
     try {

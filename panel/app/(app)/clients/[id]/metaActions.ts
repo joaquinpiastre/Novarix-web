@@ -125,12 +125,30 @@ export async function addMetaAsset(formData: FormData): Promise<void> {
   revalidatePath(`/clients/${client_id}`);
 }
 
+/**
+ * Saca una cuenta del cliente y BORRA sus metricas guardadas (pauta, redes,
+ * publicaciones). Antes solo se desactivaba y sus datos se seguian sumando al
+ * cliente (aparecian posts y gasto de otras empresas del mismo portfolio).
+ */
 export async function removeMetaAsset(formData: FormData): Promise<void> {
   const client_id = String(formData.get("client_id") ?? "");
   const id = String(formData.get("id") ?? "");
-  await requireClientAccess(client_id);
+  const { userId: actorId } = await requireClientAccess(client_id);
   if (!id) return;
-  await query("update meta_assets set active = false where id = $1", [id]);
+  const removed = await queryOne<{ asset_type: string; external_id: string; name: string | null }>(
+    "delete from meta_assets where id = $1 and client_id = $2 returning asset_type::text as asset_type, external_id, name",
+    [id, client_id]
+  );
+  if (removed) {
+    await recordAudit({
+      actorId,
+      action: "meta_assets.remove",
+      entityType: "meta_asset",
+      entityId: id,
+      before: removed,
+      ip: getClientIp(),
+    });
+  }
   revalidatePath(`/clients/${client_id}`);
 }
 
@@ -148,13 +166,25 @@ export async function syncMetaNow(
   await requireClientAccess(client_id);
   if (!connection_id) return { error: "Falta la conexión." };
 
+  const connection = await queryOne<{ id: string }>("select id from meta_connections where id = $1 and client_id = $2", [
+    connection_id,
+    client_id,
+  ]);
+  if (!connection) return { error: "Conexión no encontrada." };
+
+  // 30 dias: rellena huecos de dias que no se sincronizaron.
+  let result;
   try {
-    await syncConnection(connection_id, 7);
+    result = await syncConnection(connection_id, 30);
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Falló la sincronización." };
   }
 
   revalidatePath(`/clients/${client_id}`);
+  if (result.failed.length) {
+    const detail = result.failed.map((f) => `${f.name}: ${f.error}`).join(" · ");
+    return { error: `No se pudo leer ${result.failed.length === 1 ? "una cuenta" : `${result.failed.length} cuentas`} — ${detail}` };
+  }
   return { ok: true };
 }
 

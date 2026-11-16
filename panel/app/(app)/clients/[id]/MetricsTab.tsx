@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { META_CONNECT_MESSAGES } from "@/lib/meta/oauthState";
 import { AssetChooser } from "@/components/meta/AssetChooser";
@@ -142,6 +142,10 @@ function ConnectionCard({
   // Recien conectado (o sin cuentas elegidas): se abre directo la eleccion.
   const [showPicker, setShowPicker] = useState(params.get("meta") === "choose" || assets.length === 0);
   const [syncState, syncAction] = useFormState<SyncNowState, FormData>(syncMetaNow, {});
+  // Si se quitaron todas las cuentas, se vuelve a mostrar la eleccion.
+  useEffect(() => {
+    if (assets.length === 0) setShowPicker(true);
+  }, [assets.length]);
 
   return (
     <Card>
@@ -162,7 +166,7 @@ function ConnectionCard({
         <form action={syncAction}>
           <input type="hidden" name="client_id" value={clientId} />
           <input type="hidden" name="connection_id" value={connection.id} />
-          <SubmitButton label="Sincronizar ahora" pendingLabel="Sincronizando…" />
+          <SubmitButton label="Sincronizar ahora" pendingLabel="Sincronizando… (puede tardar un minuto)" />
         </form>
         <Button variant="secondary" onClick={() => setShowPicker((v) => !v)}>
           {showPicker ? "Cerrar elección" : "Elegir cuentas del cliente"}
@@ -184,7 +188,7 @@ function ConnectionCard({
         </form>
       </div>
       {syncState.error && <p className="mt-2 text-sm text-danger">{syncState.error}</p>}
-      {syncState.ok && <p className="mt-2 text-sm text-success">Sincronizado.</p>}
+      {syncState.ok && <p className="mt-2 text-sm text-success">Sincronizado: se actualizaron los últimos 30 días.</p>}
 
       {showPicker && <ChooserPanel clientId={clientId} clientName={clientName} onDone={() => setShowPicker(false)} />}
 
@@ -201,6 +205,9 @@ function ConnectionCard({
                 fd.set("client_id", clientId);
                 fd.set("id", a.id);
                 removeMetaAsset(fd);
+              }}
+              onSubmit={(e) => {
+                if (!confirm(`¿Quitar "${a.name ?? a.external_id}" de ${clientName}? Se borran también sus métricas guardadas en el panel.`)) e.preventDefault();
               }}
             >
               <Button type="submit" variant="ghost">
