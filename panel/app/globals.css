@@ -103,3 +103,25 @@ h3 {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Al imprimir (Guardar como PDF) siempre en modo claro: el papel es blanco y
+   los navegadores no imprimen fondos por defecto, asi que el texto claro del
+   modo oscuro quedaria ilegible. */
+@media print {
+  :root,
+  :root[data-theme="dark"] {
+    --c-bg: 0 0% 100%;
+    --c-surface: 0 0% 100%;
+    --c-surface-hover: 262 35% 95%;
+    --c-border: 262 22% 87%;
+    --c-text-primary: 258 50% 11%;
+    --c-text-muted: 258 12% 42%;
+    --c-accent: 275 72% 42%;
+    --c-accent-hover: 275 72% 36%;
+    --c-accent-fg: 0 0% 100%;
+    --c-success: 152 62% 30%;
+    --c-warning: 33 92% 38%;
+    --c-danger: 0 72% 46%;
+    color-scheme: light;
+  }
+}

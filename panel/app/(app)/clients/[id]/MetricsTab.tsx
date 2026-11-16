@@ -6,6 +6,8 @@ import { META_CONNECT_MESSAGES } from "@/lib/meta/oauthState";
 import { AssetChooser } from "@/components/meta/AssetChooser";
 import { SocialOverview } from "@/components/meta/SocialOverview";
 import type { SocialOverviewData } from "@/lib/meta/social";
+import type { MetricsReportListItem } from "@/lib/meta/reportSchema";
+import { MetricsReportsCard } from "./MetricsReportsCard";
 import { getMetaChoices, saveMetaChoices } from "./metaChoiceActions";
 import { useFormState, useFormStatus } from "react-dom";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -307,6 +309,7 @@ export function MetricsTab({
   assets,
   dailySpend,
   socialOverview,
+  metricsReports,
   alerts,
   metaOAuthEnabled,
 }: {
@@ -317,6 +320,7 @@ export function MetricsTab({
   assets: MetaAsset[];
   dailySpend: DailySpendPoint[];
   socialOverview: SocialOverviewData;
+  metricsReports: MetricsReportListItem[];
   alerts: Alert[];
 }) {
   return (
@@ -337,6 +341,7 @@ export function MetricsTab({
           />
         ))
       )}
+      {(connections.length > 0 || metricsReports.length > 0) && <MetricsReportsCard clientId={clientId} reports={metricsReports} />}
       <SocialOverview data={socialOverview} periodLabel="últimos 30 días" />
       <SpendChart data={dailySpend} />
     </div>

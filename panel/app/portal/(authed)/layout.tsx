@@ -60,7 +60,7 @@ export default async function PortalLayout({ children }: { children: React.React
   return (
     <div className="min-h-dvh">
       {isAdminPreview && (
-        <div className="flex items-center justify-between gap-3 bg-accent px-4 py-2 text-sm text-accent-fg">
+        <div className="flex items-center justify-between gap-3 bg-accent px-4 py-2 text-sm text-accent-fg print:hidden">
           <span>Estás viendo el portal como <strong>{client?.name}</strong> (solo lectura).</span>
           <form action={stopClientPreview}>
             <button type="submit" className="underline">
@@ -69,7 +69,7 @@ export default async function PortalLayout({ children }: { children: React.React
           </form>
         </div>
       )}
-      <header className="border-b border-border bg-surface">
+      <header className="border-b border-border bg-surface print:hidden">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6">
           <Link href="/portal" className="flex min-w-0 flex-col gap-1">
             <NovarixLogo withName subtitle="Portal" size={30} />

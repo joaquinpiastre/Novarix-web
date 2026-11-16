@@ -27,6 +27,7 @@ import type {
 import { ClientDetailTabs } from "./ClientDetailTabs";
 import { isMetaOAuthConfigured } from "@/lib/meta/oauth";
 import { getSocialOverview } from "@/lib/meta/social";
+import { listMetricsReports } from "@/lib/meta/report";
 import { listClientCredentials } from "@/lib/credentials/store";
 
 export const dynamic = "force-dynamic";
@@ -165,7 +166,7 @@ export default async function ClientDetailPage({
 
   const socialFrom = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
   const socialTo = new Date().toISOString().slice(0, 10);
-  const [metaConnections, metaAssets, dailySpend, alerts, socialOverview] = await Promise.all([
+  const [metaConnections, metaAssets, dailySpend, alerts, socialOverview, metricsReports] = await Promise.all([
     query<MetaConnection>(
       "select * from meta_connections where client_id = $1 order by created_at desc",
       [params.id]
@@ -191,6 +192,7 @@ export default async function ClientDetailPage({
       [params.id]
     ),
     getSocialOverview(params.id, socialFrom, socialTo),
+    listMetricsReports(params.id),
   ]);
 
   const [companyUsers, pendingInvites] = full
@@ -312,6 +314,7 @@ export default async function ClientDetailPage({
       metaAssets={metaAssets}
       dailySpend={dailySpend}
       socialOverview={socialOverview}
+      metricsReports={metricsReports}
       alerts={alerts}
       companyUsers={companyUsers}
       pendingInvites={pendingInvites}

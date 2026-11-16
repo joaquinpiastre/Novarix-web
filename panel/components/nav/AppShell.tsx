@@ -97,9 +97,9 @@ export function AppShell({
   useEffect(() => setOpen(false), [pathname]);
 
   return (
-    <div className="min-h-dvh lg:grid lg:grid-cols-[272px_1fr]">
+    <div className="min-h-dvh lg:grid lg:grid-cols-[272px_1fr] print:block">
       {/* Escritorio */}
-      <aside className="sticky top-0 hidden h-dvh flex-col justify-between overflow-y-auto border-r border-border bg-surface px-4 py-5 lg:flex">
+      <aside className="sticky top-0 hidden h-dvh print:hidden flex-col justify-between overflow-y-auto border-r border-border bg-surface px-4 py-5 lg:flex">
         <div className="space-y-6">
           <Link href="/dashboard" className="block px-2">
             <NovarixLogo withName size={34} />
@@ -117,7 +117,7 @@ export function AppShell({
       </aside>
 
       {/* Celular */}
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-surface/95 px-4 backdrop-blur lg:hidden">
+      <header className="sticky top-0 z-30 flex h-14 print:hidden items-center justify-between border-b border-border bg-surface/95 px-4 backdrop-blur lg:hidden">
         <Link href="/dashboard">
           <NovarixLogo withName size={28} />
         </Link>
