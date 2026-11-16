@@ -18,12 +18,12 @@ export async function startMetaSyncJob(): Promise<void> {
   await boss.schedule(META_SYNC_JOB, "0 6 * * *", {}, { tz: "America/Argentina/Mendoza" });
 
   // Puesta al dia: si alguna conexion no se sincroniza hace mas de un dia
-  // (server caido a la hora del cron, o una conexion que quedo trabada), se
-  // corre ahora. El singletonKey evita encolarla dos veces seguidas.
+  // (server caido a la hora del cron) o quedo con error, se corre ahora. El
+  // singletonKey evita encolarla dos veces seguidas.
   const stale = await queryOne<{ n: number }>(
     `select count(*)::int as n from meta_connections mc join clients c on c.id = mc.client_id
      where c.status not in ('inactivo', 'eliminado')
-       and (mc.last_synced_at is null or mc.last_synced_at < now() - interval '26 hours')`
+       and (mc.status = 'error' or mc.last_synced_at is null or mc.last_synced_at < now() - interval '26 hours')`
   );
   if ((stale?.n ?? 0) > 0) {
     await boss.send(META_SYNC_JOB, {}, { singletonKey: "meta-sync-catchup", singletonSeconds: 3600 });
