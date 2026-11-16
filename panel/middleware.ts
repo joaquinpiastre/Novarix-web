@@ -19,6 +19,10 @@ const PUBLIC_PATHS = [
   "/portal/reset-password",
 ];
 
+// Paginas legales: publicas para todos (las revisa Meta al aprobar la app) y
+// sin redireccion aunque haya sesion abierta.
+const OPEN_PATHS = ["/privacidad", "/eliminacion-de-datos"];
+
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
@@ -27,6 +31,7 @@ export function middleware(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
   const isPortalHost = host === PORTAL_HOST || host.startsWith(`${PORTAL_HOST}:`);
   const requestedPath = request.nextUrl.pathname;
+  if (OPEN_PATHS.includes(requestedPath)) return NextResponse.next();
 
   // Path "efectivo" para las reglas de abajo: en el dominio de clientes, se
   // trata todo como si ya estuviera bajo /portal.
