@@ -56,6 +56,13 @@ export async function checkAlertsForClient(clientId: string): Promise<void> {
   }>("select id, status, last_error, token_expires_at from meta_connections where client_id = $1", [
     clientId,
   ]);
+  // Si ya no hay ninguna conexion con error, la alerta de "falló" se cierra sola.
+  if (!connections.some((c) => c.status === "error")) {
+    await query(
+      "update alerts set resolved = true, resolved_at = now() where client_id = $1 and kind = 'connection_error' and resolved = false",
+      [clientId]
+    );
+  }
   for (const conn of connections) {
     if (conn.status === "error") {
       await raiseAlert(

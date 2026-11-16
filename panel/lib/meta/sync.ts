@@ -6,10 +6,12 @@ import { metaGet, MetaApiError } from "./client";
 import {
   AD_INSIGHTS_FIELDS,
   IG_FEED_INSIGHTS,
-  IG_INSIGHTS_METRICS,
   IG_MEDIA_FIELDS,
   IG_REELS_INSIGHTS,
-  PAGE_INSIGHTS_METRICS,
+  IG_SERIES_METRICS,
+  IG_TOTAL_METRICS,
+  PAGE_DAILY_METRICS,
+  type SocialColumn,
 } from "./metrics";
 import { checkAlertsForClient } from "./alerts";
 import type { MetaAsset, MetaConnection } from "@/lib/types/domain";
@@ -89,52 +91,144 @@ interface InsightMetricSeries {
   values: { value: number; end_time: string }[];
 }
 
+type SocialDay = Partial<Record<SocialColumn, number>>;
+type SocialByDate = Map<string, SocialDay>;
+
+const SOCIAL_COLUMNS: SocialColumn[] = [
+  "followers",
+  "follower_growth",
+  "reach",
+  "views",
+  "engagement",
+  "accounts_engaged",
+  "profile_visits",
+  "link_taps",
+];
+
+function setSocial(byDate: SocialByDate, date: string, column: SocialColumn, value: unknown): void {
+  if (typeof value !== "number" || !Number.isFinite(value)) return;
+  const row = byDate.get(date) ?? {};
+  row[column] = value;
+  byDate.set(date, row);
+}
+
+/** Guarda por dia; lo que no vino en esta pasada no pisa lo que ya estaba. */
+async function saveSocialDays(asset: MetaAsset, byDate: SocialByDate): Promise<void> {
+  const cols = SOCIAL_COLUMNS;
+  for (const [date, vals] of byDate) {
+    await query(
+      `insert into social_insights_daily (asset_id, client_id, date, ${cols.join(", ")}, updated_at)
+       values ($1, $2, $3, ${cols.map((_, i) => `$${i + 4}`).join(", ")}, now())
+       on conflict (asset_id, date) do update set
+         ${cols.map((c) => `${c} = coalesce(excluded.${c}, social_insights_daily.${c})`).join(", ")},
+         updated_at = now()`,
+      [asset.id, asset.client_id, date, ...cols.map((c) => vals[c] ?? null)]
+    );
+  }
+}
+
+/** Primera vez que se sincroniza esta cuenta: se traen 30 dias aunque sea la sync diaria. */
+async function socialDaysToSync(asset: MetaAsset, sinceDays: number): Promise<number> {
+  const has = await queryOne<{ n: number }>("select count(*)::int as n from social_insights_daily where asset_id = $1", [asset.id]);
+  return (has?.n ?? 0) > 0 ? sinceDays : Math.max(sinceDays, 30);
+}
+
+/**
+ * Pide cada metrica por separado: si Meta retiro una ("#100 ... valid insights
+ * metric") o la cuenta no la tiene (pocos seguidores), se saltea y sigue. Solo
+ * falla si no salio ninguna.
+ */
+async function collectSeries(
+  objectId: string,
+  token: string,
+  metrics: Record<string, SocialColumn>,
+  since: string,
+  until: string,
+  byDate: SocialByDate
+): Promise<{ ok: number; firstError: unknown }> {
+  let ok = 0;
+  let firstError: unknown = null;
+  for (const [metric, column] of Object.entries(metrics)) {
+    try {
+      const res = await metaGet<{ data: InsightMetricSeries[] }>(`${objectId}/insights`, token, { metric, period: "day", since, until });
+      for (const s of res.data ?? []) {
+        for (const v of s.values ?? []) setSocial(byDate, v.end_time.slice(0, 10), column, v.value);
+      }
+      ok++;
+    } catch (err) {
+      firstError ??= err;
+      log.warn("meta insight metric skipped", { objectId, metric, err: err instanceof MetaApiError ? err.message : String(err) });
+    }
+  }
+  return { ok, firstError };
+}
+
 async function syncPage(asset: MetaAsset, token: string, sinceDays: number): Promise<void> {
-  const res = await metaGet<{ data: InsightMetricSeries[] }>(`${asset.external_id}/insights`, token, {
-    metric: PAGE_INSIGHTS_METRICS.join(","),
-    period: "day",
-    since: daysAgoISO(sinceDays),
-    until: todayISO(),
+  // Las metricas de pagina solo se pueden leer con el token de la pagina.
+  const page = await metaGet<{ access_token?: string; followers_count?: number; fan_count?: number }>(asset.external_id, token, {
+    fields: "access_token,followers_count,fan_count",
   });
-  await upsertSocialSeries(asset, res.data ?? [], "page_fan_count", "page_post_engagements");
+  const pageToken = page.access_token ?? token;
+  const days = await socialDaysToSync(asset, sinceDays);
+
+  const byDate: SocialByDate = new Map();
+  const { ok, firstError } = await collectSeries(asset.external_id, pageToken, PAGE_DAILY_METRICS, daysAgoISO(days), todayISO(), byDate);
+  setSocial(byDate, todayISO(), "followers", page.followers_count ?? page.fan_count);
+  await saveSocialDays(asset, byDate);
+  if (ok === 0 && firstError) throw firstError;
 }
 
 async function syncInstagram(asset: MetaAsset, token: string, sinceDays: number): Promise<void> {
-  const res = await metaGet<{ data: InsightMetricSeries[] }>(`${asset.external_id}/insights`, token, {
-    metric: IG_INSIGHTS_METRICS.join(","),
-    period: "day",
-    since: daysAgoISO(sinceDays),
-    until: todayISO(),
-  });
-  await upsertSocialSeries(asset, res.data ?? [], "follower_count", "reach");
-}
+  const days = Math.min(await socialDaysToSync(asset, sinceDays), 30); // Instagram no acepta rangos de mas de 30 dias
+  const byDate: SocialByDate = new Map();
 
-async function upsertSocialSeries(
-  asset: MetaAsset,
-  series: InsightMetricSeries[],
-  followersMetric: string,
-  engagementOrReachMetric: string
-): Promise<void> {
-  const byDate = new Map<string, { followers?: number; engagement?: number }>();
+  const profile = await metaGet<{ followers_count?: number }>(asset.external_id, token, { fields: "followers_count" });
+  setSocial(byDate, todayISO(), "followers", profile.followers_count);
 
-  for (const s of series) {
-    for (const v of s.values ?? []) {
-      const date = v.end_time.slice(0, 10);
-      const row = byDate.get(date) ?? {};
-      if (s.name === followersMetric) row.followers = v.value;
-      if (s.name === engagementOrReachMetric) row.engagement = v.value;
-      byDate.set(date, row);
+  const series = await collectSeries(asset.external_id, token, IG_SERIES_METRICS, daysAgoISO(days), todayISO(), byDate);
+
+  // Los totales (views, interacciones...) Meta los da solo sumados: se piden de a un dia
+  // (since=D, until=D+1 coincide con el valor diario de la serie para la fecha D).
+  let totalMetrics = Object.keys(IG_TOTAL_METRICS);
+  for (let back = days; back >= 1 && totalMetrics.length; back--) {
+    const since = daysAgoISO(back);
+    const until = daysAgoISO(back - 1);
+    try {
+      const res = await metaGet<{ data: { name: string; total_value?: { value?: number } }[] }>(`${asset.external_id}/insights`, token, {
+        metric: totalMetrics.join(","),
+        metric_type: "total_value",
+        period: "day",
+        since,
+        until,
+      });
+      for (const row of res.data ?? []) {
+        const column = IG_TOTAL_METRICS[row.name];
+        if (column) setSocial(byDate, since, column, row.total_value?.value ?? 0);
+      }
+    } catch (err) {
+      // Alguna metrica no disponible: se prueban de a una y se descartan las que fallan.
+      const working: string[] = [];
+      for (const metric of totalMetrics) {
+        try {
+          const res = await metaGet<{ data: { name: string; total_value?: { value?: number } }[] }>(`${asset.external_id}/insights`, token, {
+            metric,
+            metric_type: "total_value",
+            period: "day",
+            since,
+            until,
+          });
+          setSocial(byDate, since, IG_TOTAL_METRICS[metric], res.data?.[0]?.total_value?.value ?? 0);
+          working.push(metric);
+        } catch {
+          log.warn("ig total metric skipped", { assetId: asset.id, metric, err: err instanceof MetaApiError ? err.message : String(err) });
+        }
+      }
+      totalMetrics = working;
     }
   }
 
-  for (const [date, vals] of byDate) {
-    await query(
-      `insert into social_insights_daily (asset_id, client_id, date, followers, reach, engagement)
-       values ($1,$2,$3,$4,$4,$5)
-       on conflict (asset_id, date) do update set followers=excluded.followers, engagement=excluded.engagement`,
-      [asset.id, asset.client_id, date, vals.followers ?? null, vals.engagement ?? null]
-    );
-  }
+  await saveSocialDays(asset, byDate);
+  if (series.ok === 0 && totalMetrics.length === 0 && series.firstError) throw series.firstError;
 }
 
 interface IgMediaItem {

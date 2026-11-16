@@ -4,6 +4,8 @@ import { useCallback, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { META_CONNECT_MESSAGES } from "@/lib/meta/oauthState";
 import { AssetChooser } from "@/components/meta/AssetChooser";
+import { SocialOverview } from "@/components/meta/SocialOverview";
+import type { SocialOverviewData } from "@/lib/meta/social";
 import { getMetaChoices, saveMetaChoices } from "./metaChoiceActions";
 import { useFormState, useFormStatus } from "react-dom";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -304,6 +306,7 @@ export function MetricsTab({
   connections,
   assets,
   dailySpend,
+  socialOverview,
   alerts,
   metaOAuthEnabled,
 }: {
@@ -313,6 +316,7 @@ export function MetricsTab({
   connections: MetaConnection[];
   assets: MetaAsset[];
   dailySpend: DailySpendPoint[];
+  socialOverview: SocialOverviewData;
   alerts: Alert[];
 }) {
   return (
@@ -333,6 +337,7 @@ export function MetricsTab({
           />
         ))
       )}
+      <SocialOverview data={socialOverview} periodLabel="últimos 30 días" />
       <SpendChart data={dailySpend} />
     </div>
   );

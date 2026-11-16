@@ -73,6 +73,7 @@ import type {
 } from "./page";
 import { MarketingTab } from "./MarketingTab";
 import { MetricsTab } from "./MetricsTab";
+import type { SocialOverviewData } from "@/lib/meta/social";
 import { SystemsTab } from "./SystemsTab";
 import { PortalContentTab } from "./PortalContentTab";
 
@@ -712,6 +713,7 @@ export function ClientDetailTabs({
   metaConnections,
   metaAssets,
   dailySpend,
+  socialOverview,
   alerts,
   companyUsers,
   pendingInvites,
@@ -757,6 +759,7 @@ export function ClientDetailTabs({
   metaConnections: MetaConnection[];
   metaAssets: MetaAsset[];
   dailySpend: DailySpendPoint[];
+  socialOverview: SocialOverviewData;
   alerts: Alert[];
   companyUsers: PortalCompanyUser[];
   pendingInvites: PendingInvite[];
@@ -857,6 +860,7 @@ export function ClientDetailTabs({
         connections={metaConnections}
         assets={metaAssets}
         dailySpend={dailySpend}
+        socialOverview={socialOverview}
         alerts={alerts}
       />
     ),

@@ -26,6 +26,7 @@ import type {
 } from "@/lib/types/domain";
 import { ClientDetailTabs } from "./ClientDetailTabs";
 import { isMetaOAuthConfigured } from "@/lib/meta/oauth";
+import { getSocialOverview } from "@/lib/meta/social";
 import { listClientCredentials } from "@/lib/credentials/store";
 
 export const dynamic = "force-dynamic";
@@ -162,7 +163,9 @@ export default async function ClientDetailPage({
     queryOne<BrandKit>("select * from brand_kits where client_id = $1", [params.id]),
   ]);
 
-  const [metaConnections, metaAssets, dailySpend, alerts] = await Promise.all([
+  const socialFrom = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
+  const socialTo = new Date().toISOString().slice(0, 10);
+  const [metaConnections, metaAssets, dailySpend, alerts, socialOverview] = await Promise.all([
     query<MetaConnection>(
       "select * from meta_connections where client_id = $1 order by created_at desc",
       [params.id]
@@ -187,6 +190,7 @@ export default async function ClientDetailPage({
       "select * from alerts where client_id = $1 and resolved = false order by created_at desc",
       [params.id]
     ),
+    getSocialOverview(params.id, socialFrom, socialTo),
   ]);
 
   const [companyUsers, pendingInvites] = full
@@ -307,6 +311,7 @@ export default async function ClientDetailPage({
       metaConnections={metaConnections}
       metaAssets={metaAssets}
       dailySpend={dailySpend}
+      socialOverview={socialOverview}
       alerts={alerts}
       companyUsers={companyUsers}
       pendingInvites={pendingInvites}

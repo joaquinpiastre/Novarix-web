@@ -1,9 +1,11 @@
 import Link from "next/link";
 import clsx from "clsx";
 import { requireClient } from "@/lib/auth/requireClient";
-import { query, queryOne } from "@/lib/db";
+import { queryOne } from "@/lib/db";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { formatCurrency } from "@/lib/utils/currency";
+import { getSocialOverview } from "@/lib/meta/social";
+import { SocialOverview } from "@/components/meta/SocialOverview";
 import { MetaConnectCard } from "./MetaConnectCard";
 
 export const dynamic = "force-dynamic";
@@ -95,19 +97,10 @@ export default async function PortalMetricsPage({
     : "last_30") as Period;
   const { from, to, prevFrom, prevTo } = rangeFor(period);
 
-  const [totals, prevTotals, followers, topPosts] = await Promise.all([
+  const [totals, prevTotals, social] = await Promise.all([
     totalsFor(clientId, from, to),
     totalsFor(clientId, prevFrom, prevTo),
-    queryOne<{ followers: number }>(
-      `select followers from social_insights_daily where client_id = $1 and followers is not null
-       order by date desc limit 1`,
-      [clientId]
-    ),
-    query<{ id: string; caption: string | null; permalink: string | null; engagement: number | null }>(
-      `select id, caption, permalink, engagement from social_posts where client_id = $1
-       order by engagement desc nulls last limit 5`,
-      [clientId]
-    ),
+    getSocialOverview(clientId, from, to),
   ]);
 
   const costPerResult = totals.results > 0 ? totals.spend / totals.results : null;
@@ -124,7 +117,7 @@ export default async function PortalMetricsPage({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-text-primary">Métricas</h1>
-          <p className="text-sm text-text-muted">Resultados de tu inversión en Meta Ads/Instagram.</p>
+          <p className="text-sm text-text-muted">Tu pauta en Meta y los resultados de tu Facebook e Instagram.</p>
         </div>
         <div className="flex gap-1.5">
           {PERIODS.map((p) => (
@@ -186,33 +179,11 @@ export default async function PortalMetricsPage({
               </p>
               <p className="text-xs text-text-muted">Impresiones</p>
             </div>
-            {followers && (
-              <div>
-                <p className="text-lg font-semibold text-text-primary">{followers.followers.toLocaleString("es-AR")}</p>
-                <p className="text-xs text-text-muted">Seguidores</p>
-              </div>
-            )}
           </div>
         </Card>
       )}
 
-      {topPosts.length > 0 && (
-        <Card>
-          <CardTitle>Top posts</CardTitle>
-          <ul className="mt-3 divide-y divide-border">
-            {topPosts.map((p) => (
-              <li key={p.id} className="flex items-center justify-between gap-3 py-2">
-                <p className="truncate text-sm text-text-primary">{p.caption || "(sin descripción)"}</p>
-                {p.permalink && (
-                  <a href={p.permalink} target="_blank" rel="noreferrer" className="shrink-0 text-xs text-accent hover:underline">
-                    Ver →
-                  </a>
-                )}
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
+      <SocialOverview data={social} periodLabel={PERIODS.find((p) => p.value === period)?.label.toLowerCase() ?? ""} />
     </div>
   );
 }
